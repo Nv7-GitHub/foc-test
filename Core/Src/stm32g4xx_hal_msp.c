@@ -57,7 +57,9 @@
 /* USER CODE BEGIN 0 */
 
 /* USER CODE END 0 */
-/**
+
+void HAL_HRTIM_MspPostInit(HRTIM_HandleTypeDef *hhrtim);
+                    /**
   * Initializes the Global MSP.
   */
 void HAL_MspInit(void)
@@ -79,6 +81,87 @@ void HAL_MspInit(void)
   /* USER CODE BEGIN MspInit 1 */
 
   /* USER CODE END MspInit 1 */
+}
+
+/**
+  * @brief HRTIM MSP Initialization
+  * This function configures the hardware resources used in this example
+  * @param hhrtim: HRTIM handle pointer
+  * @retval None
+  */
+void HAL_HRTIM_MspInit(HRTIM_HandleTypeDef* hhrtim)
+{
+  if(hhrtim->Instance==HRTIM1)
+  {
+    /* USER CODE BEGIN HRTIM1_MspInit 0 */
+
+    /* USER CODE END HRTIM1_MspInit 0 */
+    /* Peripheral clock enable */
+    __HAL_RCC_HRTIM1_CLK_ENABLE();
+    /* USER CODE BEGIN HRTIM1_MspInit 1 */
+
+    /* USER CODE END HRTIM1_MspInit 1 */
+
+  }
+
+}
+
+void HAL_HRTIM_MspPostInit(HRTIM_HandleTypeDef* hhrtim)
+{
+  GPIO_InitTypeDef GPIO_InitStruct = {0};
+  if(hhrtim->Instance==HRTIM1)
+  {
+    /* USER CODE BEGIN HRTIM1_MspPostInit 0 */
+
+    /* USER CODE END HRTIM1_MspPostInit 0 */
+
+    __HAL_RCC_GPIOB_CLK_ENABLE();
+    __HAL_RCC_GPIOA_CLK_ENABLE();
+    /**HRTIM1 GPIO Configuration
+    PB12     ------> HRTIM1_CHC1
+    PA8     ------> HRTIM1_CHA1
+    PA10     ------> HRTIM1_CHB1
+    */
+    GPIO_InitStruct.Pin = GPIO_PIN_12;
+    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+    GPIO_InitStruct.Alternate = GPIO_AF13_HRTIM1;
+    HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+    GPIO_InitStruct.Pin = GPIO_PIN_8|GPIO_PIN_10;
+    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+    GPIO_InitStruct.Alternate = GPIO_AF13_HRTIM1;
+    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+    /* USER CODE BEGIN HRTIM1_MspPostInit 1 */
+
+    /* USER CODE END HRTIM1_MspPostInit 1 */
+  }
+
+}
+/**
+  * @brief HRTIM MSP De-Initialization
+  * This function freeze the hardware resources used in this example
+  * @param hhrtim: HRTIM handle pointer
+  * @retval None
+  */
+void HAL_HRTIM_MspDeInit(HRTIM_HandleTypeDef* hhrtim)
+{
+  if(hhrtim->Instance==HRTIM1)
+  {
+    /* USER CODE BEGIN HRTIM1_MspDeInit 0 */
+
+    /* USER CODE END HRTIM1_MspDeInit 0 */
+    /* Peripheral clock disable */
+    __HAL_RCC_HRTIM1_CLK_DISABLE();
+    /* USER CODE BEGIN HRTIM1_MspDeInit 1 */
+
+    /* USER CODE END HRTIM1_MspDeInit 1 */
+  }
+
 }
 
 /* USER CODE BEGIN 1 */
