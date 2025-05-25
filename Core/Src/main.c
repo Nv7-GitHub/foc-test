@@ -128,8 +128,8 @@ int main(void) {
   HAL_HRTIM_WaveformCounterStart(&hhrtim1, HRTIM_TIMERID_TIMER_C);
 
   // ADC
-  uint16_t CSA[3];
-  HAL_ADC_Start_DMA(&hadc1, &CSA, 3);
+  uint16_t CSA[4];  // CSA, CSB, CSC, VBUS
+  HAL_ADC_Start_DMA(&hadc1, &CSA, 4);
 
   // DAC
   HAL_DAC_Start(&hdac1, DAC_CHANNEL_1);
@@ -172,7 +172,7 @@ int main(void) {
     }
 
     HAL_Delay(10);
-    printf("csa:%u,csb:%u,csc:%u\n", CSA[0], CSA[1], CSA[2]);
+    printf("csa:%u,csb:%u,csc:%u,vbus:%u\n", CSA[0], CSA[1], CSA[2], CSA[3]);
     HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_1, DAC_ALIGN_12B_R, CSA[0]);
   }
   /* USER CODE END 3 */
@@ -249,7 +249,7 @@ static void MX_ADC1_Init(void) {
   hadc1.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
   hadc1.Init.LowPowerAutoWait = DISABLE;
   hadc1.Init.ContinuousConvMode = ENABLE;
-  hadc1.Init.NbrOfConversion = 3;
+  hadc1.Init.NbrOfConversion = 4;
   hadc1.Init.DiscontinuousConvMode = DISABLE;
   hadc1.Init.ExternalTrigConv = ADC_SOFTWARE_START;
   hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
@@ -291,6 +291,14 @@ static void MX_ADC1_Init(void) {
    */
   sConfig.Channel = ADC_CHANNEL_7;
   sConfig.Rank = ADC_REGULAR_RANK_3;
+  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK) {
+    Error_Handler();
+  }
+
+  /** Configure Regular Channel
+   */
+  sConfig.Channel = ADC_CHANNEL_8;
+  sConfig.Rank = ADC_REGULAR_RANK_4;
   if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK) {
     Error_Handler();
   }

@@ -74,6 +74,8 @@ void Error_Handler(void);
 #define CSB_GPIO_Port GPIOC
 #define CSC_Pin GPIO_PIN_1
 #define CSC_GPIO_Port GPIOC
+#define VBUS_Pin GPIO_PIN_2
+#define VBUS_GPIO_Port GPIOC
 #define MT_CS_Pin GPIO_PIN_4
 #define MT_CS_GPIO_Port GPIOC
 #define DRV_CS_Pin GPIO_PIN_5
