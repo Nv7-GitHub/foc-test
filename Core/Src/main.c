@@ -21,7 +21,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include <stdbool.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -69,7 +69,7 @@ static void MX_DAC1_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-void SPI_MODE_MT() {
+/*void SPI_MODE_MT() {
   HAL_SPI_DeInit(&hspi1);
   hspi1.Init.CLKPhase = SPI_PHASE_1EDGE;  // or SPI_PHASE_2EDGE
   HAL_SPI_Init(&hspi1);
@@ -79,6 +79,75 @@ void SPI_MODE_DRV() {
   HAL_SPI_DeInit(&hspi1);
   hspi1.Init.CLKPhase = SPI_PHASE_2EDGE;  // or SPI_PHASE_2EDGE
   HAL_SPI_Init(&hspi1);
+}*/
+
+float MT_READ() {
+  HAL_GPIO_WritePin(MT_CS_GPIO_Port, MT_CS_Pin, GPIO_PIN_RESET);
+
+  uint8_t tx_buf[3];
+  uint8_t rx_buf[3];
+
+  HAL_SPI_TransmitReceive(&hspi1, tx_buf, rx_buf, 3, HAL_MAX_DELAY);
+  uint16_t angle_raw = (rx_buf[1] >> 2) | (rx_buf[0] << 6);
+  float angle = ((float)angle_raw) / 16384.0f * 360.0f;
+
+  HAL_GPIO_WritePin(MT_CS_GPIO_Port, MT_CS_Pin, GPIO_PIN_SET);
+
+  return angle;
+}
+
+uint16_t DRV_Read(uint8_t address) {
+  uint8_t tx[2];
+  uint8_t rx[2];
+
+  // Build the 16-bit read command: W = 0, 4-bit address, 11-bit dummy data
+  uint16_t cmd = (address & 0x0F) << 11;
+
+  tx[0] = (cmd >> 8) & 0xFF;  // MSB
+  tx[1] = cmd & 0xFF;         // LSB
+
+  // Send read command
+  HAL_GPIO_WritePin(DRV_CS_GPIO_Port, DRV_CS_Pin, GPIO_PIN_RESET);
+  HAL_SPI_Transmit(&hspi1, tx, 2, HAL_MAX_DELAY);
+  HAL_GPIO_WritePin(DRV_CS_GPIO_Port, DRV_CS_Pin, GPIO_PIN_SET);
+
+  // Short delay — depending on timing requirements (1 us is often enough)
+  // For robust code: use microsecond delay here if available
+  for (volatile int i = 0; i < 100; i++) __NOP();  // crude delay
+
+  // Send dummy to receive response
+  tx[0] = 0x00;
+  tx[1] = 0x00;
+  HAL_GPIO_WritePin(DRV_CS_GPIO_Port, DRV_CS_Pin, GPIO_PIN_RESET);
+  HAL_SPI_TransmitReceive(&hspi1, tx, rx, 2, HAL_MAX_DELAY);
+  HAL_GPIO_WritePin(DRV_CS_GPIO_Port, DRV_CS_Pin, GPIO_PIN_SET);
+
+  for (volatile int i = 0; i < 100; i++) __NOP();  // crude delay
+
+  // Combine and mask to 11 bits (remove 5 don't-care bits)
+  uint16_t full = ((uint16_t)rx[0] << 8) | rx[1];
+  uint16_t data = full & 0x07FF;  // Only bits [10:0] are valid
+
+  return data;
+}
+
+void DRV_Write(uint8_t address, uint16_t data) {
+  // Clamp to 11-bit data
+  data &= 0x07FF;
+
+  // Build 16-bit command word: W=1 (bit 15), Address=bits 14–11, Data=bits 10–0
+  uint16_t cmd = (1 << 15) | ((address & 0x0F) << 11) | data;
+
+  uint8_t tx[2];
+  tx[0] = (cmd >> 8) & 0xFF;
+  tx[1] = cmd & 0xFF;
+
+  // Send over SPI
+  HAL_GPIO_WritePin(DRV_CS_GPIO_Port, DRV_CS_Pin, GPIO_PIN_RESET);
+  HAL_SPI_Transmit(&hspi1, tx, 2, HAL_MAX_DELAY);
+  HAL_GPIO_WritePin(DRV_CS_GPIO_Port, DRV_CS_Pin, GPIO_PIN_SET);
+
+  for (volatile int i = 0; i < 100; i++) __NOP();  // crude delay
 }
 
 /* USER CODE END 0 */
@@ -128,19 +197,39 @@ int main(void) {
   HAL_HRTIM_WaveformCounterStart(&hhrtim1, HRTIM_TIMERID_TIMER_C);
 
   // ADC
-  uint16_t CSA[4];  // CSA, CSB, CSC, VBUS
-  HAL_ADC_Start_DMA(&hadc1, &CSA, 4);
+  uint32_t CSA[4];  // CSA, CSB, CSC, VBUS
+  HAL_ADC_Start_DMA(&hadc1, CSA, 4);
 
   // DAC
   HAL_DAC_Start(&hdac1, DAC_CHANNEL_1);
-
   const float period =
       __HAL_HRTIM_GetPeriod(&hhrtim1, HRTIM_TIMERINDEX_TIMER_A);
 
+  // DRV
+  // SPI_MODE_DRV();
+  HAL_Delay(1000);
+  printf("--SHOULD BE 0x7FF--\n");
+  printf("Warnings & Watchdog Reset: %X\n", DRV_Read(0x1));
+  printf("OV/VDS Faults: %X\n", DRV_Read(0x2));
+  printf("IC Faults: %X\n", DRV_Read(0x3));
+
+  printf("--SHOULD BE 0x7F0--\n");
+  printf("VGS Faults: %X\n", DRV_Read(0x4));
+
+  // Set the registers
+  DRV_Write(0x5, 0x378);  // 1758ns drive time, 0.25A source/sink (high-side)
+  DRV_Write(0x6, 0x378);  // 1758ns drive time, 0.25A source/sink (low-side)
+  DRV_Write(0x7, 0x2A6);  // defaults except 3 input pwm
+  DRV_Write(0xA, 0x07F);  // Defaults except 80V/V for amplifier
+  DRV_Write(0xC, 0x050);  // Set VDS trip = 0.109V, roughly 21.8A
+
+  // MT
+  // SPI_MODE_MT();
+
   /* USER CODE END 2 */
 
-  /* Initialize USER push-button, will be used to trigger an interrupt each time
-   * it's pressed.*/
+  /* Initialize USER push-button, will be used to trigger an interrupt each
+   * time it's pressed.*/
   BSP_PB_Init(BUTTON_USER, BUTTON_MODE_EXTI);
 
   /* Initialize COM1 port (115200, 8 bits (7-bit data + 1 stop bit), no parity
@@ -172,7 +261,8 @@ int main(void) {
     }
 
     HAL_Delay(10);
-    printf("csa:%u,csb:%u,csc:%u,vbus:%u\n", CSA[0], CSA[1], CSA[2], CSA[3]);
+    printf("csa:%lu,csb:%lu,csc:%lu,vbus:%lu,angle:%f\n", CSA[0], CSA[1],
+           CSA[2], CSA[3], MT_READ());
     HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_1, DAC_ALIGN_12B_R, CSA[0]);
   }
   /* USER CODE END 3 */
@@ -248,11 +338,11 @@ static void MX_ADC1_Init(void) {
   hadc1.Init.ScanConvMode = ADC_SCAN_ENABLE;
   hadc1.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
   hadc1.Init.LowPowerAutoWait = DISABLE;
-  hadc1.Init.ContinuousConvMode = ENABLE;
+  hadc1.Init.ContinuousConvMode = DISABLE;
   hadc1.Init.NbrOfConversion = 4;
   hadc1.Init.DiscontinuousConvMode = DISABLE;
-  hadc1.Init.ExternalTrigConv = ADC_SOFTWARE_START;
-  hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
+  hadc1.Init.ExternalTrigConv = ADC_EXTERNALTRIG_HRTIM_TRG1;
+  hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_RISING;
   hadc1.Init.DMAContinuousRequests = ENABLE;
   hadc1.Init.Overrun = ADC_OVR_DATA_PRESERVED;
   hadc1.Init.OversamplingMode = DISABLE;
@@ -271,7 +361,7 @@ static void MX_ADC1_Init(void) {
    */
   sConfig.Channel = ADC_CHANNEL_5;
   sConfig.Rank = ADC_REGULAR_RANK_1;
-  sConfig.SamplingTime = ADC_SAMPLETIME_2CYCLES_5;
+  sConfig.SamplingTime = ADC_SAMPLETIME_24CYCLES_5;
   sConfig.SingleDiff = ADC_SINGLE_ENDED;
   sConfig.OffsetNumber = ADC_OFFSET_NONE;
   sConfig.Offset = 0;
@@ -359,6 +449,7 @@ static void MX_HRTIM1_Init(void) {
 
   /* USER CODE END HRTIM1_Init 0 */
 
+  HRTIM_ADCTriggerCfgTypeDef pADCTriggerCfg = {0};
   HRTIM_TimeBaseCfgTypeDef pTimeBaseCfg = {0};
   HRTIM_TimerCfgTypeDef pTimerCfg = {0};
   HRTIM_TimerCtlTypeDef pTimerCtl = {0};
@@ -379,6 +470,16 @@ static void MX_HRTIM1_Init(void) {
     Error_Handler();
   }
   if (HAL_HRTIM_PollForDLLCalibration(&hhrtim1, 10) != HAL_OK) {
+    Error_Handler();
+  }
+  pADCTriggerCfg.UpdateSource = HRTIM_ADCTRIGGERUPDATE_TIMER_A;
+  pADCTriggerCfg.Trigger = HRTIM_ADCTRIGGEREVENT13_TIMERA_CMP3;
+  if (HAL_HRTIM_ADCTriggerConfig(&hhrtim1, HRTIM_ADCTRIGGER_1,
+                                 &pADCTriggerCfg) != HAL_OK) {
+    Error_Handler();
+  }
+  if (HAL_HRTIM_ADCPostScalerConfig(&hhrtim1, HRTIM_ADCTRIGGER_1, 0x0) !=
+      HAL_OK) {
     Error_Handler();
   }
   pTimeBaseCfg.Period = 0xFFDF;
@@ -414,11 +515,18 @@ static void MX_HRTIM1_Init(void) {
                                &pTimeBaseCfg) != HAL_OK) {
     Error_Handler();
   }
-  pTimerCtl.UpDownMode = HRTIM_TIMERUPDOWNMODE_UP;
+  pTimerCtl.UpDownMode = HRTIM_TIMERUPDOWNMODE_UPDOWN;
+  pTimerCtl.GreaterCMP3 = HRTIM_TIMERGTCMP3_EQUAL;
   pTimerCtl.GreaterCMP1 = HRTIM_TIMERGTCMP1_EQUAL;
   pTimerCtl.DualChannelDacEnable = HRTIM_TIMER_DCDE_DISABLED;
   if (HAL_HRTIM_WaveformTimerControl(&hhrtim1, HRTIM_TIMERINDEX_TIMER_A,
                                      &pTimerCtl) != HAL_OK) {
+    Error_Handler();
+  }
+  if (HAL_HRTIM_RollOverModeConfig(
+          &hhrtim1, HRTIM_TIMERINDEX_TIMER_A,
+          HRTIM_TIM_FEROM_BOTH | HRTIM_TIM_BMROM_BOTH | HRTIM_TIM_ADROM_BOTH |
+              HRTIM_TIM_OUTROM_BOTH | HRTIM_TIM_ROM_BOTH) != HAL_OK) {
     Error_Handler();
   }
   pTimerCfg.InterruptRequests = HRTIM_TIM_IT_NONE;
@@ -450,6 +558,12 @@ static void MX_HRTIM1_Init(void) {
                                       &pCompareCfg) != HAL_OK) {
     Error_Handler();
   }
+  pCompareCfg.CompareValue = 0xFFF7 / 2;
+  if (HAL_HRTIM_WaveformCompareConfig(&hhrtim1, HRTIM_TIMERINDEX_TIMER_A,
+                                      HRTIM_COMPAREUNIT_3,
+                                      &pCompareCfg) != HAL_OK) {
+    Error_Handler();
+  }
   pOutputCfg.Polarity = HRTIM_OUTPUTPOLARITY_HIGH;
   pOutputCfg.SetSource = HRTIM_OUTPUTSET_TIMCMP1;
   pOutputCfg.ResetSource = HRTIM_OUTPUTRESET_TIMCMP1;
@@ -478,6 +592,13 @@ static void MX_HRTIM1_Init(void) {
                                      &pTimerCtl) != HAL_OK) {
     Error_Handler();
   }
+  if (HAL_HRTIM_RollOverModeConfig(
+          &hhrtim1, HRTIM_TIMERINDEX_TIMER_B,
+          HRTIM_TIM_FEROM_BOTH | HRTIM_TIM_BMROM_BOTH | HRTIM_TIM_ADROM_BOTH |
+              HRTIM_TIM_OUTROM_BOTH | HRTIM_TIM_ROM_BOTH) != HAL_OK) {
+    Error_Handler();
+  }
+  pCompareCfg.CompareValue = 0xFFF7;
   if (HAL_HRTIM_WaveformCompareConfig(&hhrtim1, HRTIM_TIMERINDEX_TIMER_B,
                                       HRTIM_COMPAREUNIT_1,
                                       &pCompareCfg) != HAL_OK) {
@@ -489,6 +610,12 @@ static void MX_HRTIM1_Init(void) {
   }
   if (HAL_HRTIM_WaveformTimerControl(&hhrtim1, HRTIM_TIMERINDEX_TIMER_C,
                                      &pTimerCtl) != HAL_OK) {
+    Error_Handler();
+  }
+  if (HAL_HRTIM_RollOverModeConfig(
+          &hhrtim1, HRTIM_TIMERINDEX_TIMER_C,
+          HRTIM_TIM_FEROM_BOTH | HRTIM_TIM_BMROM_BOTH | HRTIM_TIM_ADROM_BOTH |
+              HRTIM_TIM_OUTROM_BOTH | HRTIM_TIM_ROM_BOTH) != HAL_OK) {
     Error_Handler();
   }
   if (HAL_HRTIM_WaveformCompareConfig(&hhrtim1, HRTIM_TIMERINDEX_TIMER_C,
@@ -570,7 +697,7 @@ static void MX_GPIO_Init(void) {
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOC, MT_CS_Pin | DRV_CS_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOC, MT_CS_Pin | DRV_CS_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pins : MT_CS_Pin DRV_CS_Pin */
   GPIO_InitStruct.Pin = MT_CS_Pin | DRV_CS_Pin;
