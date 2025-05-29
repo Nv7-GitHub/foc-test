@@ -17,6 +17,10 @@
                 "USE_NUCLEO_64",
                 "USE_HAL_DRIVER",
                 "STM32G474xx"
+            ],
+            "compilerArgs": [
+                "-mfloat-abi=hard",
+                "-mfpu=fpv4-sp-d16"
             ]
         }
     ]

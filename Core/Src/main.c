@@ -187,6 +187,10 @@ int main(void) {
   MX_DAC1_Init();
   /* USER CODE BEGIN 2 */
 
+  // ADC
+  uint16_t CSA[4];  // CSA, CSB, CSC, VBUS
+  HAL_ADC_Start_DMA(&hadc1, (uint32_t *)CSA, 4);
+
   // HRTIM
   float duty = 0;
   HAL_HRTIM_WaveformOutputStart(&hhrtim1, HRTIM_OUTPUT_TA1);
@@ -196,15 +200,30 @@ int main(void) {
   HAL_HRTIM_WaveformOutputStart(&hhrtim1, HRTIM_OUTPUT_TC1);
   HAL_HRTIM_WaveformCounterStart(&hhrtim1, HRTIM_TIMERID_TIMER_C);
 
-  // ADC
-  uint32_t CSA[4];  // CSA, CSB, CSC, VBUS
-  HAL_ADC_Start_DMA(&hadc1, CSA, 4);
-
   // DAC
   HAL_DAC_Start(&hdac1, DAC_CHANNEL_1);
   const float period =
       __HAL_HRTIM_GetPeriod(&hhrtim1, HRTIM_TIMERINDEX_TIMER_A);
 
+  /* USER CODE END 2 */
+
+  /* Initialize USER push-button, will be used to trigger an interrupt each time
+   * it's pressed.*/
+  BSP_PB_Init(BUTTON_USER, BUTTON_MODE_EXTI);
+
+  /* Initialize COM1 port (115200, 8 bits (7-bit data + 1 stop bit), no parity
+   */
+  BspCOMInit.BaudRate = 115200;
+  BspCOMInit.WordLength = COM_WORDLENGTH_8B;
+  BspCOMInit.StopBits = COM_STOPBITS_1;
+  BspCOMInit.Parity = COM_PARITY_NONE;
+  BspCOMInit.HwFlowCtl = COM_HWCONTROL_NONE;
+  if (BSP_COM_Init(COM1, &BspCOMInit) != BSP_ERROR_NONE) {
+    Error_Handler();
+  }
+
+  /* Infinite loop */
+  /* USER CODE BEGIN WHILE */
   // DRV
   // SPI_MODE_DRV();
   HAL_Delay(1000);
@@ -226,25 +245,6 @@ int main(void) {
   // MT
   // SPI_MODE_MT();
 
-  /* USER CODE END 2 */
-
-  /* Initialize USER push-button, will be used to trigger an interrupt each time
-   * it's pressed.*/
-  BSP_PB_Init(BUTTON_USER, BUTTON_MODE_EXTI);
-
-  /* Initialize COM1 port (115200, 8 bits (7-bit data + 1 stop bit), no parity
-   */
-  BspCOMInit.BaudRate = 115200;
-  BspCOMInit.WordLength = COM_WORDLENGTH_8B;
-  BspCOMInit.StopBits = COM_STOPBITS_1;
-  BspCOMInit.Parity = COM_PARITY_NONE;
-  BspCOMInit.HwFlowCtl = COM_HWCONTROL_NONE;
-  if (BSP_COM_Init(COM1, &BspCOMInit) != BSP_ERROR_NONE) {
-    Error_Handler();
-  }
-
-  /* Infinite loop */
-  /* USER CODE BEGIN WHILE */
   while (1) {
     /* USER CODE END WHILE */
 
@@ -259,10 +259,11 @@ int main(void) {
     if (duty > 1.0f) {
       duty = 0.0f;
     }
+    float angle = MT_READ();
 
     HAL_Delay(10);
-    printf("csa:%lu,csb:%lu,csc:%lu,vbus:%lu,angle:%f\n", CSA[0], CSA[1],
-           CSA[2], CSA[3], MT_READ());
+    printf("csa:%u,csb:%u,csc:%u,vbus:%u\n", CSA[0], CSA[1], CSA[2], CSA[3]);
+    printf("angle:%f, test:%f\n", (float)angle, 7.77f);
     HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_1, DAC_ALIGN_12B_R, CSA[0]);
   }
   /* USER CODE END 3 */
@@ -558,7 +559,7 @@ static void MX_HRTIM1_Init(void) {
                                       &pCompareCfg) != HAL_OK) {
     Error_Handler();
   }
-  pCompareCfg.CompareValue = 0xFFF7 / 2;
+  pCompareCfg.CompareValue = (0xFFF7 - 1) / 2;
   if (HAL_HRTIM_WaveformCompareConfig(&hhrtim1, HRTIM_TIMERINDEX_TIMER_A,
                                       HRTIM_COMPAREUNIT_3,
                                       &pCompareCfg) != HAL_OK) {
