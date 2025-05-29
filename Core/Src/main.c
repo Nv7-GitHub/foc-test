@@ -262,8 +262,8 @@ int main(void) {
     float angle = MT_READ();
 
     HAL_Delay(10);
-    printf("csa:%u,csb:%u,csc:%u,vbus:%u\n", CSA[0], CSA[1], CSA[2], CSA[3]);
-    printf("angle:%f, test:%f\n", (float)angle, 7.77f);
+    printf("csa:%u,csb:%u,csc:%u,vbus:%u,angle:%f\n", CSA[0], CSA[1], CSA[2],
+           CSA[3], angle);
     HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_1, DAC_ALIGN_12B_R, CSA[0]);
   }
   /* USER CODE END 3 */
