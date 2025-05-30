@@ -76,10 +76,6 @@ void Error_Handler(void);
 #define CSC_GPIO_Port GPIOC
 #define VBUS_Pin GPIO_PIN_2
 #define VBUS_GPIO_Port GPIOC
-#define MT_CS_Pin GPIO_PIN_4
-#define MT_CS_GPIO_Port GPIOC
-#define DRV_CS_Pin GPIO_PIN_5
-#define DRV_CS_GPIO_Port GPIOC
 #define CSA_Pin GPIO_PIN_14
 #define CSA_GPIO_Port GPIOB
 #define T_SWDIO_Pin GPIO_PIN_13
@@ -88,6 +84,10 @@ void Error_Handler(void);
 #define T_SWCLK_GPIO_Port GPIOA
 #define T_SWO_Pin GPIO_PIN_3
 #define T_SWO_GPIO_Port GPIOB
+#define DRV_CS_Pin GPIO_PIN_4
+#define DRV_CS_GPIO_Port GPIOB
+#define MT_CS_Pin GPIO_PIN_5
+#define MT_CS_GPIO_Port GPIOB
 
 /* USER CODE BEGIN Private defines */
 

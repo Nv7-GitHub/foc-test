@@ -203,8 +203,10 @@ int main(void) {
   float duty = 0;
   HAL_HRTIM_WaveformOutputStart(&hhrtim1, HRTIM_OUTPUT_TA1);
   HAL_HRTIM_WaveformCounterStart(&hhrtim1, HRTIM_TIMERID_TIMER_A);
+
   HAL_HRTIM_WaveformOutputStart(&hhrtim1, HRTIM_OUTPUT_TB1);
   HAL_HRTIM_WaveformCounterStart(&hhrtim1, HRTIM_TIMERID_TIMER_B);
+
   HAL_HRTIM_WaveformOutputStart(&hhrtim1, HRTIM_OUTPUT_TC1);
   HAL_HRTIM_WaveformCounterStart(&hhrtim1, HRTIM_TIMERID_TIMER_C);
 
@@ -234,7 +236,9 @@ int main(void) {
   // SPI_MODE_DRV();
   HAL_Delay(1000);
   printf("--SHOULD BE 0x7FF--\n");
-  printf("Warnings & Watchdog Reset: %X\n", DRV_Read(0x1));
+  while (1) {
+    printf("Warnings & Watchdog Reset: %X\n", DRV_Read(0x1));
+  }
   printf("OV/VDS Faults: %X\n", DRV_Read(0x2));
   printf("IC Faults: %X\n", DRV_Read(0x3));
 
@@ -261,7 +265,7 @@ int main(void) {
     }
     DUTY_CYCLE(HRTIM_TIMERINDEX_TIMER_A, duty);
     DUTY_CYCLE(HRTIM_TIMERINDEX_TIMER_B, 1.0f - duty);
-    DUTY_CYCLE(HRTIM_TIMERINDEX_TIMER_B, 0.5f * duty);
+    DUTY_CYCLE(HRTIM_TIMERINDEX_TIMER_C, 0.5f * duty);
     float angle = MT_READ();
 
     HAL_Delay(10);
@@ -486,9 +490,9 @@ static void MX_HRTIM1_Init(void) {
       HAL_OK) {
     Error_Handler();
   }
-  pTimeBaseCfg.Period = 0xFFDF;
+  pTimeBaseCfg.Period = 0xFFF7;
   pTimeBaseCfg.RepetitionCounter = 0x00;
-  pTimeBaseCfg.PrescalerRatio = HRTIM_PRESCALERRATIO_MUL32;
+  pTimeBaseCfg.PrescalerRatio = HRTIM_PRESCALERRATIO_MUL8;
   pTimeBaseCfg.Mode = HRTIM_MODE_CONTINUOUS;
   if (HAL_HRTIM_TimeBaseConfig(&hhrtim1, HRTIM_TIMERINDEX_MASTER,
                                &pTimeBaseCfg) != HAL_OK) {
@@ -513,8 +517,6 @@ static void MX_HRTIM1_Init(void) {
                                     &pTimerCfg) != HAL_OK) {
     Error_Handler();
   }
-  pTimeBaseCfg.Period = 0xFFF7;
-  pTimeBaseCfg.PrescalerRatio = HRTIM_PRESCALERRATIO_MUL8;
   if (HAL_HRTIM_TimeBaseConfig(&hhrtim1, HRTIM_TIMERINDEX_TIMER_A,
                                &pTimeBaseCfg) != HAL_OK) {
     Error_Handler();
@@ -589,7 +591,6 @@ static void MX_HRTIM1_Init(void) {
                                      HRTIM_OUTPUT_TA1, &pOutputCfg) != HAL_OK) {
     Error_Handler();
   }
-  pOutputCfg.ResetSource = HRTIM_OUTPUTRESET_TIMCMP1;
   if (HAL_HRTIM_WaveformOutputConfig(&hhrtim1, HRTIM_TIMERINDEX_TIMER_B,
                                      HRTIM_OUTPUT_TB1, &pOutputCfg) != HAL_OK) {
     Error_Handler();
@@ -723,14 +724,14 @@ static void MX_GPIO_Init(void) {
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOC, MT_CS_Pin | DRV_CS_Pin, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(GPIOB, DRV_CS_Pin | MT_CS_Pin, GPIO_PIN_RESET);
 
-  /*Configure GPIO pins : MT_CS_Pin DRV_CS_Pin */
-  GPIO_InitStruct.Pin = MT_CS_Pin | DRV_CS_Pin;
+  /*Configure GPIO pins : DRV_CS_Pin MT_CS_Pin */
+  GPIO_InitStruct.Pin = DRV_CS_Pin | MT_CS_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
-  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /* USER CODE BEGIN MX_GPIO_Init_2 */
 
