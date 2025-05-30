@@ -249,22 +249,23 @@ int main(void) {
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-    __HAL_HRTIM_SetCompare(&hhrtim1, HRTIM_TIMERINDEX_TIMER_A,
-                           HRTIM_COMPAREUNIT_1, (uint32_t)(period * duty));
-    __HAL_HRTIM_SetCompare(&hhrtim1, HRTIM_TIMERINDEX_TIMER_B,
-                           HRTIM_COMPAREUNIT_1, (uint32_t)(period * duty));
-    __HAL_HRTIM_SetCompare(&hhrtim1, HRTIM_TIMERINDEX_TIMER_C,
-                           HRTIM_COMPAREUNIT_1, (uint32_t)(period * duty));
     duty += 0.01;
     if (duty > 1.0f) {
       duty = 0.0f;
     }
+    __HAL_HRTIM_SetCompare(&hhrtim1, HRTIM_TIMERINDEX_TIMER_A,
+                           HRTIM_COMPAREUNIT_1, (uint32_t)(period * duty));
+    __HAL_HRTIM_SetCompare(&hhrtim1, HRTIM_TIMERINDEX_TIMER_B,
+                           HRTIM_COMPAREUNIT_1,
+                           (uint32_t)((1.0f - period) * duty));
+    __HAL_HRTIM_SetCompare(&hhrtim1, HRTIM_TIMERINDEX_TIMER_C,
+                           HRTIM_COMPAREUNIT_1, (uint32_t)(period * duty));
     float angle = MT_READ();
 
     HAL_Delay(10);
     printf("csa:%u,csb:%u,csc:%u,vbus:%u,angle:%f\n", CSA[0], CSA[1], CSA[2],
            CSA[3], angle);
-    HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_1, DAC_ALIGN_12B_R, CSA[0]);
+    HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_1, DAC_ALIGN_12B_R, CSA[3]);
   }
   /* USER CODE END 3 */
 }
@@ -362,7 +363,7 @@ static void MX_ADC1_Init(void) {
    */
   sConfig.Channel = ADC_CHANNEL_5;
   sConfig.Rank = ADC_REGULAR_RANK_1;
-  sConfig.SamplingTime = ADC_SAMPLETIME_24CYCLES_5;
+  sConfig.SamplingTime = ADC_SAMPLETIME_2CYCLES_5;
   sConfig.SingleDiff = ADC_SINGLE_ENDED;
   sConfig.OffsetNumber = ADC_OFFSET_NONE;
   sConfig.Offset = 0;
@@ -510,8 +511,8 @@ static void MX_HRTIM1_Init(void) {
                                     &pTimerCfg) != HAL_OK) {
     Error_Handler();
   }
-  pTimeBaseCfg.Period = 0xFFF7;
-  pTimeBaseCfg.PrescalerRatio = HRTIM_PRESCALERRATIO_MUL8;
+  pTimeBaseCfg.Period = 0xFFEF;
+  pTimeBaseCfg.PrescalerRatio = HRTIM_PRESCALERRATIO_MUL16;
   if (HAL_HRTIM_TimeBaseConfig(&hhrtim1, HRTIM_TIMERINDEX_TIMER_A,
                                &pTimeBaseCfg) != HAL_OK) {
     Error_Handler();
@@ -553,13 +554,13 @@ static void MX_HRTIM1_Init(void) {
                                     &pTimerCfg) != HAL_OK) {
     Error_Handler();
   }
-  pCompareCfg.CompareValue = 0xFFF7;
+  pCompareCfg.CompareValue = 0xFFEF;
   if (HAL_HRTIM_WaveformCompareConfig(&hhrtim1, HRTIM_TIMERINDEX_TIMER_A,
                                       HRTIM_COMPAREUNIT_1,
                                       &pCompareCfg) != HAL_OK) {
     Error_Handler();
   }
-  pCompareCfg.CompareValue = (0xFFF7 - 1) / 2;
+  pCompareCfg.CompareValue = (0xFFEF - 1) / 2;
   if (HAL_HRTIM_WaveformCompareConfig(&hhrtim1, HRTIM_TIMERINDEX_TIMER_A,
                                       HRTIM_COMPAREUNIT_3,
                                       &pCompareCfg) != HAL_OK) {
@@ -599,7 +600,7 @@ static void MX_HRTIM1_Init(void) {
               HRTIM_TIM_OUTROM_BOTH | HRTIM_TIM_ROM_BOTH) != HAL_OK) {
     Error_Handler();
   }
-  pCompareCfg.CompareValue = 0xFFF7;
+  pCompareCfg.CompareValue = 0xFFEF;
   if (HAL_HRTIM_WaveformCompareConfig(&hhrtim1, HRTIM_TIMERINDEX_TIMER_B,
                                       HRTIM_COMPAREUNIT_1,
                                       &pCompareCfg) != HAL_OK) {
