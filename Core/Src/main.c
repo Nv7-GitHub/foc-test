@@ -115,21 +115,23 @@ float MT_READ() {
     return -1.0f;  // Return -1.0f to indicate an error
   }
 
-  // --- 4. Extract the 14-bit raw angle data from the received 24 bits ---
-  // Based on Figure 25:
-  // rx_buf[0] contains: [D13 D12 D11 D10 D9 D8 D7 D6] (Bits 13-6 of angle data)
-  // rx_buf[1] contains: [D5 D4 D3 D2 D1 D0 Mg3 Mg2]   (Bits 5-0 of angle data,
-  // then Mg) rx_buf[2] contains: [Mg1 Mg0 CRC5 CRC4 CRC3 CRC2 CRC1 CRC0]
+  // Combine the two bytes into a single 16-bit word
+  // rx_buf[0] is the MSB of this combined word, rx_buf[1] is the LSB
+  uint16_t received_16bit_word = ((uint16_t)rx_buf[1] << 8) | rx_buf[0];
 
-  // Extract D13-D6 from rx_buf[0] and shift them to the upper 8 bits of the
-  // 14-bit angle
-  angle_raw = ((uint16_t)rx_buf[0] << 6);
+  // Now, apply your hypothesis: the first bit of this 16-bit word is a dummy.
+  // So, shift the entire word right by 1 to discard the dummy bit.
+  // After this shift, the bits are: D13, D12, ..., D0, Mg3, Mg2 (total 16 bits,
+  // with D13 now at bit 15, and Mg2 at bit 0)
+  uint16_t data_shifted_for_dummy = received_16bit_word & 0x7FFF;
 
-  // Extract D5-D0 from rx_buf[1] (the upper 6 bits of rx_buf[1]), and OR them
-  // in First, shift rx_buf[1] right by 2 to align D5-D0 to the lowest 6 bits of
-  // the byte. Then, mask with 0x3F (0b00111111) to ensure only these 6 bits are
-  // used.
-  angle_raw |= ((uint16_t)(rx_buf[1] >> 2) & 0x3F);
+  // Now, extract the 14-bit angle (D13 to D0).
+  // In 'data_shifted_for_dummy': D13 is at bit 15, D0 is at bit 2.
+  // The Mg3 (bit 1) and Mg2 (bit 0) bits are at the very end.
+  // So, shift right by 2 to remove Mg3 and Mg2, and then mask to keep only the
+  // 14 angle bits.
+  angle_raw =
+      (data_shifted_for_dummy >> 1) & 0x3FFF;  // 0x3FFF is a 14-bit mask
 
   // --- 5. (Optional but Recommended) Extract Status/CRC bits ---
   // You might want to extract these for robustness or debugging.
@@ -775,7 +777,7 @@ static void MX_SPI1_Init(void) {
   hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
   hspi1.Init.CLKPhase = SPI_PHASE_2EDGE;
   hspi1.Init.NSS = SPI_NSS_SOFT;
-  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_32;
+  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_256;
   hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
   hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
   hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
