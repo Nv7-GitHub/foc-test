@@ -21,6 +21,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include <math.h>
 #include <stdbool.h>
 /* USER CODE END Includes */
 
@@ -85,6 +86,11 @@ void SPI_MODE_DRV() {
 
 #define PERIOD (float)0xFFF7
 void DUTY_CYCLE(uint32_t timind, float duty) {
+  if (duty < 0.001f) {
+    duty = 0.001f;
+  } else if (duty > 1.0f) {
+    duty = 1.0f;
+  }
   __HAL_HRTIM_SetCompare(&hhrtim1, timind, HRTIM_COMPAREUNIT_1,
                          (uint32_t)(PERIOD * (1.0f - duty)) / 2);
   __HAL_HRTIM_SetCompare(&hhrtim1, timind, HRTIM_COMPAREUNIT_2,
@@ -293,15 +299,17 @@ int main(void) {
   HAL_ADC_Start_DMA(&hadc1, (uint32_t *)CSA, 4);
 
   // HRTIM
-  float duty = 0;
   HAL_HRTIM_WaveformOutputStart(&hhrtim1, HRTIM_OUTPUT_TA1);
-  HAL_HRTIM_WaveformCounterStart(&hhrtim1, HRTIM_TIMERID_TIMER_A);
-
   HAL_HRTIM_WaveformOutputStart(&hhrtim1, HRTIM_OUTPUT_TB1);
-  HAL_HRTIM_WaveformCounterStart(&hhrtim1, HRTIM_TIMERID_TIMER_B);
-
   HAL_HRTIM_WaveformOutputStart(&hhrtim1, HRTIM_OUTPUT_TC1);
+
+  HAL_HRTIM_WaveformCounterStart(&hhrtim1, HRTIM_TIMERID_TIMER_A);
+  HAL_HRTIM_WaveformCounterStart(&hhrtim1, HRTIM_TIMERID_TIMER_B);
   HAL_HRTIM_WaveformCounterStart(&hhrtim1, HRTIM_TIMERID_TIMER_C);
+
+  DUTY_CYCLE(HRTIM_TIMERINDEX_TIMER_A, 0.0f);
+  DUTY_CYCLE(HRTIM_TIMERINDEX_TIMER_B, 0.0f);
+  DUTY_CYCLE(HRTIM_TIMERINDEX_TIMER_C, 0.0f);
 
   // DAC
   HAL_DAC_Start(&hdac1, DAC_CHANNEL_1);
@@ -345,8 +353,9 @@ int main(void) {
   // Set the registers
   DRV_Write(0x5, 0x378);  // 1758ns drive time, 0.25A source/sink (high-side)
   DRV_Write(0x6, 0x378);  // 1758ns drive time, 0.25A source/sink (low-side)
-  DRV_Write(0x7, 0x2A6);  // defaults except 3 input pwm
-  DRV_Write(0xA, 0x07F);  // Defaults except 80V/V for amplifier
+  DRV_Write(0x7, 0x286);  // defaults except 3 input pwm, 35ns added dead time
+  // DRV_Write(0xA, 0x07F);  // Defaults except 80V/V for amplifier
+  DRV_Write(0xA, 0x00);   // Defaults (10V/V)
   DRV_Write(0xC, 0x050);  // Set VDS trip = 0.109V, roughly 21.8A
 
   printf("--SHOULD BE 0x378--\n");
@@ -355,20 +364,32 @@ int main(void) {
   // MT
   SPI_MODE_MT();
 
+  float theta = 0;
+  const float duty = 0.08;
   while (1) {
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-    duty += 0.01;
-    if (duty > 1.0f) {
-      duty = 0.0f;
-    }
-    DUTY_CYCLE(HRTIM_TIMERINDEX_TIMER_A, duty);
-    DUTY_CYCLE(HRTIM_TIMERINDEX_TIMER_B, 1.0f - duty);
-    DUTY_CYCLE(HRTIM_TIMERINDEX_TIMER_C, 0.5f * duty);
-    float angle = MT_READ();
+    theta += 0.0733 * 3;
+    float a = cos(theta);
+    float b = -0.5 * cos(theta) + 0.8660254 * sin(theta);
+    float c = -0.5 * cos(theta) - 0.8660254 * sin(theta);
+    float off = (fmax(fmax(a, b), c) + fmin(fmin(a, b), c)) / 2;
 
-    HAL_Delay(10);
+    a = 0.5 + 0.5 * (a - off);
+    b = 0.5 + 0.5 * (b - off);
+    c = 0.5 + 0.5 * (c - off);
+
+    a *= duty;
+    b *= duty;
+    c *= duty;
+
+    DUTY_CYCLE(HRTIM_TIMERINDEX_TIMER_A, a);
+    DUTY_CYCLE(HRTIM_TIMERINDEX_TIMER_B, b);
+    DUTY_CYCLE(HRTIM_TIMERINDEX_TIMER_C, c);
+
+    float angle = MT_READ();
+    HAL_Delay(1);
     printf("csa:%u,csb:%u,csc:%u,vbus:%u,angle:%f\n", CSA[0], CSA[1], CSA[2],
            CSA[3], angle);
     HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_1, DAC_ALIGN_12B_R, CSA[3]);
