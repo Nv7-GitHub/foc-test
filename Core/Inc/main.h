@@ -34,7 +34,7 @@ extern "C" {
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+// #include "arm_math.h" // TODO: Use cmsis-dsp
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/
@@ -78,6 +78,8 @@ void Error_Handler(void);
 #define VBUS_GPIO_Port GPIOC
 #define CSA_Pin GPIO_PIN_14
 #define CSA_GPIO_Port GPIOB
+#define TIMING_OUT_Pin GPIO_PIN_9
+#define TIMING_OUT_GPIO_Port GPIOA
 #define T_SWDIO_Pin GPIO_PIN_13
 #define T_SWDIO_GPIO_Port GPIOA
 #define T_SWCLK_Pin GPIO_PIN_14

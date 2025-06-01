@@ -11,12 +11,16 @@
                 "${workspaceFolder}/Drivers/STM32G4xx_HAL_Driver/Inc",
                 "${workspaceFolder}/Drivers/CMSIS/Device/ST/STM32G4xx/Include",
                 "${workspaceFolder}/Drivers/CMSIS/Core/Include",
+                "${workspaceFolder}/Drivers/CMSIS/DSP/Include",
                 "${workspaceFolder}/Drivers/BSP/STM32G4xx_Nucleo"
             ],
             "defines": [
                 "USE_NUCLEO_64",
                 "USE_HAL_DRIVER",
-                "STM32G474xx"
+                "STM32G474xx",
+                "__GNUC__",
+                "__ARM_FEATURE_DSP=1",
+                "__FPU_PRESENT"
             ],
             "compilerArgs": [
                 "-mfloat-abi=hard",
