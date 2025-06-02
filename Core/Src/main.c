@@ -23,6 +23,8 @@
 /* USER CODE BEGIN Includes */
 #include <math.h>
 #include <stdbool.h>
+
+#include "peripheral.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -70,192 +72,6 @@ static void MX_DAC1_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-void SPI_MODE_MT() {
-  HAL_SPI_DeInit(&hspi1);
-  hspi1.Init.CLKPolarity = SPI_POLARITY_HIGH;
-  hspi1.Init.CLKPhase = SPI_PHASE_1EDGE;
-  HAL_SPI_Init(&hspi1);
-}
-
-void SPI_MODE_DRV() {
-  HAL_SPI_DeInit(&hspi1);
-  hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
-  hspi1.Init.CLKPhase = SPI_PHASE_2EDGE;
-  HAL_SPI_Init(&hspi1);
-}
-
-#define PERIOD (float)0xFFF7
-void DUTY_CYCLE(uint32_t timind, float duty) {
-  if (duty < 0.001f) {
-    duty = 0.001f;
-  } else if (duty > 1.0f) {
-    duty = 1.0f;
-  }
-  __HAL_HRTIM_SetCompare(&hhrtim1, timind, HRTIM_COMPAREUNIT_1,
-                         (uint32_t)(PERIOD * (1.0f - duty)) / 2);
-  __HAL_HRTIM_SetCompare(&hhrtim1, timind, HRTIM_COMPAREUNIT_2,
-                         (uint32_t)(PERIOD * (1.0f + duty)) / 2);
-}
-
-float MT_READ() {
-  uint8_t tx_buf[2] = {
-      0x00, 0x00};      // Transmit dummy data (MT6701 ignores MOSI during read)
-  uint8_t rx_buf[2];    // Buffer to receive 3 bytes (24 bits)
-  uint16_t angle_raw;   // To store the 14-bit raw angle value
-  float angle_degrees;  // To store the final angle in degrees
-
-  // 1. Assert Chip Select (CS low) to begin the transaction
-  HAL_GPIO_WritePin(MT_CS_GPIO_Port, MT_CS_Pin, GPIO_PIN_RESET);
-
-  // 2. Perform the 24-bit (3-byte) SPI Transmit/Receive simultaneously
-  // We specify '3' as the count because we are transmitting/receiving 3 bytes.
-  HAL_StatusTypeDef status =
-      HAL_SPI_TransmitReceive(&hspi1, tx_buf, rx_buf, 1, HAL_MAX_DELAY);
-
-  // 3. De-assert Chip Select (CS high) to end the transaction
-  HAL_GPIO_WritePin(MT_CS_GPIO_Port, MT_CS_Pin, GPIO_PIN_SET);
-
-  // Check for successful SPI transfer
-  if (status != HAL_OK) {
-    // Handle error (e.g., return a sentinel value, log an error)
-    return -1.0f;  // Return -1.0f to indicate an error
-  }
-
-  // Combine the two bytes into a single 16-bit word
-  // rx_buf[0] is the MSB of this combined word, rx_buf[1] is the LSB
-  uint16_t received_16bit_word = ((uint16_t)rx_buf[1] << 8) | rx_buf[0];
-
-  // Now, apply your hypothesis: the first bit of this 16-bit word is a dummy.
-  // So, shift the entire word right by 1 to discard the dummy bit.
-  // After this shift, the bits are: D13, D12, ..., D0, Mg3, Mg2 (total 16 bits,
-  // with D13 now at bit 15, and Mg2 at bit 0)
-  uint16_t data_shifted_for_dummy = received_16bit_word & 0x7FFF;
-
-  // Now, extract the 14-bit angle (D13 to D0).
-  // In 'data_shifted_for_dummy': D13 is at bit 15, D0 is at bit 2.
-  // The Mg3 (bit 1) and Mg2 (bit 0) bits are at the very end.
-  // So, shift right by 2 to remove Mg3 and Mg2, and then mask to keep only the
-  // 14 angle bits.
-  angle_raw =
-      (data_shifted_for_dummy >> 1) & 0x3FFF;  // 0x3FFF is a 14-bit mask
-
-  // --- 5. (Optional but Recommended) Extract Status/CRC bits ---
-  // You might want to extract these for robustness or debugging.
-  // uint8_t crc_code = (rx_buf[2] & 0x3F); // CRC5-CRC0
-  // uint8_t magnetic_status = ((rx_buf[1] & 0x03) << 2) | (rx_buf[2] >> 6); //
-  // Mg3-Mg0 (bits Mg3-Mg0) You would typically perform a CRC check here.
-
-  // --- 6. Convert raw angle to degrees ---
-  // The 14-bit raw angle ranges from 0 to 2^14 - 1 (0 to 16383).
-  // This corresponds to 0 to 360 degrees.
-  angle_degrees = ((float)angle_raw) / 16384.0f * 360.0f;
-
-  return angle_degrees;
-}
-
-uint16_t DRV_Read(uint8_t address) {
-  uint16_t command_word;   // Use uint16_t for the 16-bit command/response
-  uint16_t received_word;  // To store the 16-bit data received over MISO
-  uint16_t data_value;     // To store the extracted 11-bit data
-
-  // --- Step 1: Construct the 16-bit READ command ---
-  // The DRV8305 expects a 16-bit frame:
-  // Bit 15: R/W bit (1 for READ, 0 for WRITE)
-  // Bits 14-11: 4-bit Register Address
-  // Bits 10-0: 11-bit "Don't Care" data (for read operations)
-
-  // Set Bit 15 to 1 for a READ operation (1U << 15)
-  // Mask the address to ensure it's only 4 bits, then shift to bits 14-11
-  // The lower 11 bits (0-10) are '0' as "Don't Care" for a read
-  command_word = (1U << 15) | ((address & 0x0F) << 11);
-
-  // --- Step 2: Perform the single, 16-bit, full-duplex SPI transaction ---
-  // The DRV8305 requires CS to be low for the entire 16-bit transfer.
-  // We use HAL_SPI_TransmitReceive to send the command and simultaneously
-  // receive the response.
-
-  // 2a. Assert Chip Select (CS low) to begin the transaction
-  HAL_GPIO_WritePin(DRV_CS_GPIO_Port, DRV_CS_Pin, GPIO_PIN_RESET);
-
-  // 2b. Transmit the command and receive the response
-  // We pass pointers to uint8_t because the HAL functions typically expect
-  // them, but since hspi1.Init.DataSize is 16-bit, it treats it as a 16-bit
-  // transfer. We specify '1' as the count because we are transmitting/receiving
-  // ONE 16-bit word.
-  HAL_StatusTypeDef status =
-      HAL_SPI_TransmitReceive(&hspi1, (uint8_t *)&command_word,
-                              (uint8_t *)&received_word, 1, HAL_MAX_DELAY);
-
-  // 2c. De-assert Chip Select (CS high) to end the transaction
-  HAL_GPIO_WritePin(DRV_CS_GPIO_Port, DRV_CS_Pin, GPIO_PIN_SET);
-
-  for (volatile int i = 0; i < 100; i++) __NOP();  // crude delay
-
-  // --- Step 3: Error Handling and Data Extraction ---
-
-  // Check if the SPI transaction was successful
-  if (status != HAL_OK) {
-    // Handle the error (e.g., return an error code, log a message)
-    // For simplicity, returning 0xFFFF indicates an error
-    return 0xFFFF;
-  }
-
-  // The DRV8305's 16-bit response typically has this format:
-  // Bit 15: Fault/Status bit (often indicates if a fault occurred during the
-  // read) Bits 14-11: The original 4-bit Register Address that was read Bits
-  // 10-0: The actual 11-bit Data value from the register
-
-  // Extract the 11-bit data value (bits 10 to 0) from the received 16-bit word
-  data_value = received_word & 0x07FF;  // 0x07FF is binary 0000 0111 1111 1111
-
-  return data_value;
-}
-
-void DRV_Write(uint8_t address, uint16_t data) {
-  uint16_t command_word;  // Use uint16_t for the 16-bit command
-  uint16_t tx_data;       // To hold the 16-bit data for transmission
-
-  // --- Step 1: Clamp data to 11 bits ---
-  // Ensure the input 'data' fits within the 11-bit data field [10:0].
-  data &= 0x07FF;  // 0x07FF is binary 0000 0111 1111 1111
-
-  // --- Step 2: Build the 16-bit WRITE command word ---
-  // The DRV8305 expects a 16-bit frame:
-  // Bit 15: R/W bit (0 for WRITE, 1 for READ)
-  // Bits 14-11: 4-bit Register Address
-  // Bits 10-0: 11-bit Data to write
-
-  // Set Bit 15 to 0 for a WRITE operation (no need to explicitly 'OR' with 0 <<
-  // 15) Mask the address to ensure it's only 4 bits, then shift to bits 14-11
-  // 'OR' with the clamped 11-bit 'data'
-  command_word = ((address & 0x0F) << 11) | data;  // Bit 15 remains 0
-
-  // Store the 16-bit command in tx_data for transmission
-  tx_data = command_word;
-
-  // --- Step 3: Perform the single, 16-bit SPI transmission ---
-  // The DRV8305 requires CS to be low for the entire 16-bit transfer.
-
-  // 3a. Assert Chip Select (CS low) to begin the transaction
-  HAL_GPIO_WritePin(DRV_CS_GPIO_Port, DRV_CS_Pin, GPIO_PIN_RESET);
-
-  // 3b. Transmit the 16-bit command word
-  // We specify '1' as the count because we are transmitting ONE 16-bit word.
-  // Cast to uint8_t* as required by HAL, but it will handle as 16-bit
-  // internally.
-  HAL_StatusTypeDef status =
-      HAL_SPI_Transmit(&hspi1, (uint8_t *)&tx_data, 1, HAL_MAX_DELAY);
-
-  // 3c. De-assert Chip Select (CS high) to end the transaction
-  HAL_GPIO_WritePin(DRV_CS_GPIO_Port, DRV_CS_Pin, GPIO_PIN_SET);
-
-  // --- Step 4: Error Handling (Optional for writes, but good practice) ---
-  if (status != HAL_OK) {
-    // Handle the error (e.g., log a message, set a global error flag)
-    // For a write, there's no return value for error, so you'd handle it
-    // internally.
-  }
-}
 
 /* USER CODE END 0 */
 
@@ -305,9 +121,9 @@ int main(void) {
       &hhrtim1, HRTIM_TIMERID_TIMER_A | HRTIM_TIMERID_TIMER_B |
                     HRTIM_TIMERID_TIMER_C | HRTIM_TIMERID_MASTER);
 
-  DUTY_CYCLE(HRTIM_TIMERINDEX_TIMER_A, 0.0f);
-  DUTY_CYCLE(HRTIM_TIMERINDEX_TIMER_B, 0.0f);
-  DUTY_CYCLE(HRTIM_TIMERINDEX_TIMER_C, 0.0f);
+  DUTY_CYCLE(&hhrtim1, HRTIM_TIMERINDEX_TIMER_A, 0.0f);
+  DUTY_CYCLE(&hhrtim1, HRTIM_TIMERINDEX_TIMER_B, 0.0f);
+  DUTY_CYCLE(&hhrtim1, HRTIM_TIMERINDEX_TIMER_C, 0.0f);
 
   // DAC
   HAL_DAC_Start(&hdac1, DAC_CHANNEL_1);
@@ -332,7 +148,7 @@ int main(void) {
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   // DRV
-  SPI_MODE_DRV();
+  SPI_MODE_DRV(&hspi1);
 
   int a = 0;
   while (a == 0) {
@@ -340,27 +156,30 @@ int main(void) {
   }
 
   printf("--SHOULD BE 0x00--\n");
-  printf("Warnings & Watchdog Reset: 0x%X\n", DRV_Read(0x1));
-  printf("OV/VDS Faults: 0x%X\n", DRV_Read(0x2));
-  printf("IC Faults: 0x%X\n", DRV_Read(0x3));
-  printf("VGS Faults: 0x%X\n", DRV_Read(0x4));
+  printf("Warnings & Watchdog Reset: 0x%X\n", DRV_Read(&hspi1, 0x1));
+  printf("OV/VDS Faults: 0x%X\n", DRV_Read(&hspi1, 0x2));
+  printf("IC Faults: 0x%X\n", DRV_Read(&hspi1, 0x3));
+  printf("VGS Faults: 0x%X\n", DRV_Read(&hspi1, 0x4));
 
   printf("--SHOULD BE 0x344--\n");
-  printf("Control Gate A: 0x%X\n", DRV_Read(0x5));
+  printf("Control Gate A: 0x%X\n", DRV_Read(&hspi1, 0x5));
 
   // Set the registers
-  DRV_Write(0x5, 0x378);  // 1758ns drive time, 0.25A source/sink (high-side)
-  DRV_Write(0x6, 0x378);  // 1758ns drive time, 0.25A source/sink (low-side)
-  DRV_Write(0x7, 0x286);  // defaults except 3 input pwm, 35ns added dead time
+  DRV_Write(&hspi1, 0x5,
+            0x378);  // 1758ns drive time, 0.25A source/sink (high-side)
+  DRV_Write(&hspi1, 0x6,
+            0x378);  // 1758ns drive time, 0.25A source/sink (low-side)
+  DRV_Write(&hspi1, 0x7,
+            0x286);  // defaults except 3 input pwm, 35ns added dead time
   // DRV_Write(0xA, 0x07F);  // Defaults except 80V/V for amplifier
-  DRV_Write(0xA, 0x2A);   // Defaults except 40V/V for amplifier
-  DRV_Write(0xC, 0x050);  // Set VDS trip = 0.109V, roughly 21.8A
+  DRV_Write(&hspi1, 0xA, 0x2A);   // Defaults except 40V/V for amplifier
+  DRV_Write(&hspi1, 0xC, 0x050);  // Set VDS trip = 0.109V, roughly 21.8A
 
   printf("--SHOULD BE 0x378--\n");
-  printf("Control Gate A: 0x%X\n", DRV_Read(0x5));
+  printf("Control Gate A: 0x%X\n", DRV_Read(&hspi1, 0x5));
 
   // MT
-  SPI_MODE_MT();
+  SPI_MODE_MT(&hspi1);
 
   float theta = 0;
   const float duty = 0.1;
@@ -383,15 +202,15 @@ int main(void) {
     b *= duty;
     c *= duty;
 
-    DUTY_CYCLE(HRTIM_TIMERINDEX_TIMER_A, a);
-    DUTY_CYCLE(HRTIM_TIMERINDEX_TIMER_B, b);
-    DUTY_CYCLE(HRTIM_TIMERINDEX_TIMER_C, c);
+    DUTY_CYCLE(&hhrtim1, HRTIM_TIMERINDEX_TIMER_A, a);
+    DUTY_CYCLE(&hhrtim1, HRTIM_TIMERINDEX_TIMER_B, b);
+    DUTY_CYCLE(&hhrtim1, HRTIM_TIMERINDEX_TIMER_C, c);
 
     float csa = (float)CSA[0] - 2048.0f;
     float csb = (float)CSA[1] - 2048.0f;
     float csc = (float)CSA[2] - 2048.0f;
 
-    float angle = MT_READ();
+    float angle = MT_READ(&hspi1);
     HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_1, DAC_ALIGN_12B_R, CSA[3]);
     HAL_GPIO_WritePin(TIMING_OUT_GPIO_Port, TIMING_OUT_Pin, GPIO_PIN_RESET);
 

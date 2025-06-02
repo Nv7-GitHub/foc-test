@@ -17,6 +17,7 @@
     "*.go": "go",
     "*.gold": "mold",
     "complex": "c",
-    "cmath": "c"
+    "cmath": "c",
+    "peripheral.h": "c"
   }
 }
