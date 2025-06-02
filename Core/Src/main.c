@@ -353,7 +353,7 @@ int main(void) {
   DRV_Write(0x6, 0x378);  // 1758ns drive time, 0.25A source/sink (low-side)
   DRV_Write(0x7, 0x286);  // defaults except 3 input pwm, 35ns added dead time
   // DRV_Write(0xA, 0x07F);  // Defaults except 80V/V for amplifier
-  DRV_Write(0xA, 0x00);   // Defaults (10V/V)
+  DRV_Write(0xA, 0x2A);   // Defaults except 40V/V for amplifier
   DRV_Write(0xC, 0x050);  // Set VDS trip = 0.109V, roughly 21.8A
 
   printf("--SHOULD BE 0x378--\n");
@@ -363,7 +363,7 @@ int main(void) {
   SPI_MODE_MT();
 
   float theta = 0;
-  const float duty = 0.03;
+  const float duty = 0.1;
   while (1) {
     /* USER CODE END WHILE */
 
