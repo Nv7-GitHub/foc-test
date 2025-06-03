@@ -697,7 +697,7 @@ static void MX_GPIO_Init(void) {
 void HAL_HRTIM_RepetitionEventCallback(HRTIM_HandleTypeDef *hhrtim,
                                        uint32_t TimerIdx) {
   if (TimerIdx == HRTIM_TIMERID_MASTER) {
-    FOC_Handler(hrtim, &hspi1);
+    FOC_Handler(hhrtim, &hspi1);
   }
 }
 /* USER CODE END 4 */

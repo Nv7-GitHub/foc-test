@@ -6,7 +6,7 @@
 // flipped so set this to -1
 #define DIRECTION 1
 
-inline float32_t mech2elec(float32_t angle) {
+float32_t mech2elec(float32_t angle) {
   return fmodf((angle - ANGLE_A_RAD) * POLE_PAIRS * DIRECTION, 2.0f * M_PI);
 }
 

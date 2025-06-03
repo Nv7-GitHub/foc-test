@@ -17,11 +17,15 @@ set(MX_Include_Dirs
     ${CMAKE_SOURCE_DIR}/Drivers/BSP/STM32G4xx_Nucleo
     ${CMAKE_SOURCE_DIR}/Drivers/CMSIS/Device/ST/STM32G4xx/Include
     ${CMAKE_SOURCE_DIR}/Drivers/CMSIS/Include
+    ${CMAKE_SOURCE_DIR}/Drivers/CMSIS/DSP/Include
 )
 
 # STM32CubeMX generated application sources
 set(MX_Application_Src
     ${CMAKE_SOURCE_DIR}/Core/Src/main.c
+    ${CMAKE_SOURCE_DIR}/Core/Src/foc.c
+    ${CMAKE_SOURCE_DIR}/Core/Src/foc_math.c
+    ${CMAKE_SOURCE_DIR}/Core/Src/peripheral.c
     ${CMAKE_SOURCE_DIR}/Core/Src/stm32g4xx_it.c
     ${CMAKE_SOURCE_DIR}/Core/Src/stm32g4xx_hal_msp.c
     ${CMAKE_SOURCE_DIR}/Core/Src/sysmem.c
@@ -62,6 +66,34 @@ set(STM32_Drivers_Src
 
 # Drivers Midllewares
 
+# CMSIS DSP Library sources
+set(CMSIS_DSP_Src
+    ${CMAKE_SOURCE_DIR}/Drivers/CMSIS/DSP/Source/BasicMathFunctions/BasicMathFunctions.c
+    ${CMAKE_SOURCE_DIR}/Drivers/CMSIS/DSP/Source/FastMathFunctions/FastMathFunctions.c
+    ${CMAKE_SOURCE_DIR}/Drivers/CMSIS/DSP/Source/CommonTables/CommonTables.c
+    ${CMAKE_SOURCE_DIR}/Drivers/CMSIS/DSP/Source/TransformFunctions/TransformFunctions.c
+    ${CMAKE_SOURCE_DIR}/Drivers/CMSIS/DSP/Source/FilteringFunctions/FilteringFunctions.c
+    ${CMAKE_SOURCE_DIR}/Drivers/CMSIS/DSP/Source/MatrixFunctions/MatrixFunctions.c
+    ${CMAKE_SOURCE_DIR}/Drivers/CMSIS/DSP/Source/StatisticsFunctions/StatisticsFunctions.c
+    ${CMAKE_SOURCE_DIR}/Drivers/CMSIS/DSP/Source/SupportFunctions/SupportFunctions.c
+    ${CMAKE_SOURCE_DIR}/Drivers/CMSIS/DSP/Source/ComplexMathFunctions/ComplexMathFunctions.c
+)
+
+# Create CMSIS DSP static library
+add_library(CMSIS_DSP OBJECT)
+target_sources(CMSIS_DSP PRIVATE ${CMSIS_DSP_Src})
+target_link_libraries(CMSIS_DSP PUBLIC stm32cubemx)
+target_compile_definitions(CMSIS_DSP PRIVATE ARM_MATH_CM4 __GNUC__ __ARM_FEATURE_DSP=1)
+target_compile_options(CMSIS_DSP PRIVATE
+    -Wno-unused-parameter
+    -Wno-unused-variable
+    -Wno-unused-function
+    -Wno-sign-compare
+    -Wno-missing-braces
+    -Wno-implicit-fallthrough
+    -Wno-maybe-uninitialized
+    -w  # This suppresses ALL warnings for this target
+)
 
 
 # Link directories setup
@@ -71,7 +103,7 @@ set(MX_LINK_DIRS
 # Project static libraries
 set(MX_LINK_LIBS 
     STM32_Drivers
-    
+    CMSIS_DSP
 )
 # Interface library for includes and symbols
 add_library(stm32cubemx INTERFACE)

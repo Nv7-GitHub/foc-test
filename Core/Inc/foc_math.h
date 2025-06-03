@@ -18,9 +18,8 @@ extern "C" {
 #define M_1_SQRT3 0.57735026919f  // 1/sqrt(3)
 #define M_2_3 0.66666666667f      // 2/3
 #define M_SQRT3_2 0.86602540378f  // sqrt(3)/2
-#define M_SQRT3 1.73205080757f    // sqrt(3)
 
-inline float32_t mech2elec(float32_t angle);
+float32_t mech2elec(float32_t angle);
 void abc_to_dq(float32_t a, float32_t b, float32_t c, float32_t cos_theta,
                float32_t sin_theta, float32_t* d, float32_t* q);
 void foc_reset();
