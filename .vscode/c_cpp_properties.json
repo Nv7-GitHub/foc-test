@@ -12,9 +12,9 @@
                 "${workspaceFolder}/Core/Inc",
                 "${workspaceFolder}/Drivers/CMSIS/Device/ST/STM32G4xx/Include",
                 "${workspaceFolder}/Drivers/CMSIS/Core/Include",
-                "${workspaceFolder}/Drivers/CMSIS/DSP/Include",
                 "${workspaceFolder}/Drivers/CMSIS/Include",
-                "${workspaceFolder}/Drivers/BSP/STM32G4xx_Nucleo"
+                "${workspaceFolder}/Drivers/BSP/STM32G4xx_Nucleo",
+                "${workspaceFolder}/Middlewares/ST/ARM/DSP/Inc"
             ],
             "defines": [
                 "USE_NUCLEO_64",

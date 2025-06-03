@@ -3,7 +3,7 @@ LibFiles=Drivers/STM32G4xx_HAL_Driver/Inc/stm32g4xx_hal_adc.h;Drivers/STM32G4xx_
 
 [PreviousUsedCMakes]
 SourceFiles=Core/Src/main.c;Core/Src/stm32g4xx_it.c;Core/Src/stm32g4xx_hal_msp.c;Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_adc.c;Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_adc_ex.c;Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_ll_adc.c;Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal.c;Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_rcc.c;Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_rcc_ex.c;Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_flash.c;Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_flash_ex.c;Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_flash_ramfunc.c;Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_gpio.c;Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_exti.c;Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_dma.c;Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_dma_ex.c;Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_pwr.c;Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_pwr_ex.c;Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_cortex.c;Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_dac.c;Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_dac_ex.c;Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_hrtim.c;Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_spi.c;Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_spi_ex.c;Drivers/BSP/STM32G4xx_Nucleo/stm32g4xx_nucleo.c;Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_usart.c;Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_usart_ex.c;Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_uart_ex.c;Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_uart.c;Drivers/CMSIS/Device/ST/STM32G4xx/Source/Templates/system_stm32g4xx.c;Core/Src/system_stm32g4xx.c;Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_adc.c;Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_adc_ex.c;Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_ll_adc.c;Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal.c;Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_rcc.c;Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_rcc_ex.c;Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_flash.c;Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_flash_ex.c;Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_flash_ramfunc.c;Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_gpio.c;Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_exti.c;Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_dma.c;Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_dma_ex.c;Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_pwr.c;Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_pwr_ex.c;Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_cortex.c;Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_dac.c;Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_dac_ex.c;Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_hrtim.c;Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_spi.c;Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_spi_ex.c;Drivers/BSP/STM32G4xx_Nucleo/stm32g4xx_nucleo.c;Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_usart.c;Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_usart_ex.c;Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_uart_ex.c;Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_uart.c;Drivers/CMSIS/Device/ST/STM32G4xx/Source/Templates/system_stm32g4xx.c;Core/Src/system_stm32g4xx.c;;;
-HeaderPath=Drivers/STM32G4xx_HAL_Driver/Inc;Drivers/STM32G4xx_HAL_Driver/Inc/Legacy;Drivers/BSP/STM32G4xx_Nucleo;Drivers/CMSIS/Device/ST/STM32G4xx/Include;Drivers/CMSIS/Include;Core/Inc;
+HeaderPath=Drivers/STM32G4xx_HAL_Driver/Inc;Drivers/STM32G4xx_HAL_Driver/Inc/Legacy;Drivers/BSP/STM32G4xx_Nucleo;Drivers/CMSIS/Device/ST/STM32G4xx/Include;Drivers/CMSIS/Include;Middlewares/ST/ARM/DSP/Inc;Core/Inc;
 CDefines=USE_NUCLEO_64;USE_HAL_DRIVER;STM32G474xx;USE_HAL_DRIVER;USE_HAL_DRIVER;
 
 [PreviousGenFiles]
@@ -23,4 +23,12 @@ SourceFiles#2=../Core/Src/main.c
 SourceFolderListSize=1
 SourcePath#0=../Core/Src
 SourceFiles=;
+
+[ThirdPartyIp]
+ThirdPartyIpNumber=1
+ThirdPartyIpName#0=STMicroelectronics.X-CUBE-ALGOBUILD.1.4.0
+
+[ThirdPartyIp#STMicroelectronics.X-CUBE-ALGOBUILD.1.4.0]
+library=../Middlewares/ST/ARM/DSP/Lib/libarm_cortexM4lf_math.a;
+header=../Middlewares/ST/ARM/DSP/Inc/arm_math.h;
 
