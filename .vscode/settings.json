@@ -18,6 +18,7 @@
     "*.gold": "mold",
     "complex": "c",
     "cmath": "c",
-    "peripheral.h": "c"
+    "peripheral.h": "c",
+    "foc.h": "c"
   }
 }

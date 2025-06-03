@@ -24,6 +24,7 @@
 #include <math.h>
 #include <stdbool.h>
 
+#include "foc.h"
 #include "peripheral.h"
 /* USER CODE END Includes */
 
@@ -111,7 +112,6 @@ int main(void) {
   /* USER CODE BEGIN 2 */
 
   // ADC
-  uint16_t CSA[4];  // CSA, CSB, CSC, VBUS
   HAL_ADC_Start_DMA(&hadc1, (uint32_t *)CSA, 4);
 
   // HRTIM
@@ -120,6 +120,7 @@ int main(void) {
   HAL_HRTIM_WaveformCounterStart(
       &hhrtim1, HRTIM_TIMERID_TIMER_A | HRTIM_TIMERID_TIMER_B |
                     HRTIM_TIMERID_TIMER_C | HRTIM_TIMERID_MASTER);
+  HAL_HRTIM_WaveformCounterStart_IT(&hhrtim1, HRTIM_TIMERID_MASTER);
 
   DUTY_CYCLE(&hhrtim1, HRTIM_TIMERINDEX_TIMER_A, 0.0f);
   DUTY_CYCLE(&hhrtim1, HRTIM_TIMERINDEX_TIMER_B, 0.0f);
@@ -437,7 +438,7 @@ static void MX_HRTIM1_Init(void) {
     Error_Handler();
   }
   pTimeBaseCfg.Period = 0xFFF7;
-  pTimeBaseCfg.RepetitionCounter = 0x00;
+  pTimeBaseCfg.RepetitionCounter = 0x03;
   pTimeBaseCfg.PrescalerRatio = HRTIM_PRESCALERRATIO_MUL8;
   pTimeBaseCfg.Mode = HRTIM_MODE_CONTINUOUS;
   if (HAL_HRTIM_TimeBaseConfig(&hhrtim1, HRTIM_TIMERINDEX_MASTER,
@@ -469,6 +470,7 @@ static void MX_HRTIM1_Init(void) {
                                       &pCompareCfg) != HAL_OK) {
     Error_Handler();
   }
+  pTimeBaseCfg.RepetitionCounter = 0x00;
   if (HAL_HRTIM_TimeBaseConfig(&hhrtim1, HRTIM_TIMERINDEX_TIMER_A,
                                &pTimeBaseCfg) != HAL_OK) {
     Error_Handler();
@@ -692,7 +694,12 @@ static void MX_GPIO_Init(void) {
 }
 
 /* USER CODE BEGIN 4 */
-
+void HAL_HRTIM_RepetitionEventCallback(HRTIM_HandleTypeDef *hhrtim,
+                                       uint32_t TimerIdx) {
+  if (TimerIdx == HRTIM_TIMERID_MASTER) {
+    FOC_Handler(hrtim, &hspi1);
+  }
+}
 /* USER CODE END 4 */
 
 /**

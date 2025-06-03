@@ -1,138 +1,55 @@
 #include "foc.h"
 
-#define POLE_PAIRS 7  // 2pi/(Angle A - Angle B), 7 for A2212
-#define ANGLE_A_RAD 0
-// If angle of B is under angle of A, then the direction of the sensor is
-// flipped so set this to -1
-#define DIRECTION 1
+// ADC parameters
+#define ADC_MAX 4096.0f  // ADC count
+#define VREF 3.3f        // Volts
 
-inline float32_t mech2elec(float32_t angle) {
-  return fmodf((angle - ANGLE_A_RAD) * POLE_PAIRS * DIRECTION, 2.0f * M_PI);
-}
+// Current sense setup
+#define RESISTANCE 5.0f / 1000.0f  // Ohms
+#define GAIN 40                    // V/V
 
-// Clarke/park transform
-// (https://www.mathworks.com/help/mcb/ref/clarketransform.html,
-// https://www.mathworks.com/help/sps/ref/parktransform.html)
-// Theta is electrical angle
-void abc_to_dq(float32_t a, float32_t b, float32_t c, float32_t cos_theta,
-               float32_t sin_theta, float32_t* d, float32_t* q) {
-  // Clarke Transform (3-phase)
-  float32_t alpha = M_2_3 * (a - 0.5f * b - 0.5f * c);
-  float32_t beta = M_2_3 * (M_SQRT3_2 * b - M_SQRT3_2 * c);
+// VBUS voltage divider
+#define R1 1000.0f  // Ohms
+#define R2 330.0f   // Ohms
 
-  // Park transform
-  arm_park_f32(alpha, beta, d, q, sin_theta, cos_theta);
-}
+const float32_t CSA_SCALE =
+    VREF / (RESISTANCE * GAIN * ADC_MAX);  // Amp per ADC tick
+const float32_t VBUS_SCALE =
+    (VREF / ADC_MAX) * ((R1 + R2) / R2);  // Volt per ADC tick
 
-// PI controller parameters
-#define BANDWIDTH 160 * 2 * M_PI  // Bandwidth in Hz * 2pi
-#define INDUCTANCE 2.6e-5         // Henries
-#define RESISTANCE 0.1            // Ohms
-#define MAX_DUTY 0.8f             // Duty cycle out of 1
+uint16_t CSA[4];  // CSA, CSB, CSC, VBUS
+float32_t I_ref;
+bool FOC_EN = true;
 
-// Calculated values
-const float32_t DT = 1.0f / 5000.0f;  // 1/looprate in hz
-                                      // TODO: Get actual value
-const float32_t kP = BANDWIDTH * INDUCTANCE;
-const float32_t kI = (RESISTANCE / INDUCTANCE) * BANDWIDTH * INDUCTANCE;
-
-float32_t d_i = 0;
-float32_t q_i = 0;
-
-void foc_reset() {
-  d_i = 0;
-  q_i = 0;
-}
-
-void foc_pi_update(float32_t ref_i, float32_t d, float32_t q, float32_t vbus,
-                   float32_t* alpha, float32_t* beta, float32_t sin_theta,
-                   float32_t cos_theta) {
-  // PI controller
-  float32_t d_err = -d;
-  float32_t q_err = ref_i - q;
-
-  // TODO: Add feedforward
-  float32_t vd = kP * d_err + d_i;
-  float32_t vq = kP * q_err + q_i;
-
-  // Convert from voltage to duty cycle
-  float32_t V2d = 1.5f / vbus;
-  float32_t dd = V2d * vd;
-  float32_t dq = V2d * vq;
-
-  // Integrator + antiwindup
-  // Max duty cycle for SVM is sqrt(3)/2, if duty cycle is >80% of this d_scale
-  // will scale down the value to fit into this
-  float32_t d_mag;
-  arm_sqrt_f32(dd * dd + dq * dq, &d_mag);
-  float32_t d_scale = 0.8 * M_SQRT3_2 / d_mag;
-
-  if (d_scale < 1.0f) {  // Need to scale down
-    dd *= d_scale;
-    dq *= d_scale;
-    d_i *= 0.99f;
-    q_i *= 0.99f;
-  } else {  // Everythings going fine
-    d_i += kI * d_err * DT;
-    q_i += kI * q_err * DT;
+void FOC_Handler(HRTIM_HandleTypeDef *hrtim, SPI_HandleTypeDef *hspi) {
+  if (!FOC_EN) {
+    DUTY_CYCLE(hrtim, HRTIM_TIMERINDEX_TIMER_A, 0.0f);
+    DUTY_CYCLE(hrtim, HRTIM_TIMERINDEX_TIMER_B, 0.0f);
+    DUTY_CYCLE(hrtim, HRTIM_TIMERINDEX_TIMER_C, 0.0f);
+    return;
   }
 
-  // Inverse park for svm
-  arm_inv_park_f32(dd, dq, alpha, beta, sin_theta, cos_theta);
-}
+  // Read sensors
+  float32_t theta = mech2elec(MT_READ(hspi));
+  float32_t sin_theta = arm_sin_f32(theta);
+  float32_t cos_theta = arm_cos_f32(theta);
 
-void svm(float32_t alpha, float32_t beta, float32_t* d_a, float32_t* d_b,
-         float32_t* d_c) {
-    // Calculate times (unnormalized)
-  float32_t X = beta;
-  float32_t Y = -0.5f * beta + M_SQRT3_2 * alpha;
-  float32_t Z = -0.5f * beta - M_SQRT3_2 * alpha;
+  // Calculate measured currents
+  float32_t di, qi;
+  abc_to_dq(CSA[0] * CSA_SCALE, CSA[1] * CSA_SCALE, CSA[2] * CSA_SCALE,
+            cos_theta, sin_theta, &di, &qi);
 
-  float32_t tA, tB, tC;
+  // Update current controller
+  float32_t alpha, beta;
+  foc_pi_update(I_ref, di, qi, CSA[3] * VBUS_SCALE, &alpha, &beta, sin_theta,
+                cos_theta);
 
-  // Determine sector
-  if (X >= 0.0f) {
-    if (Y >= 0.0f) {
-      // Sector 1
-      tA = Y;
-      tB = X;
-      tC = 0.0f;
-    } else if (Z >= 0.0f) {
-      // Sector 6
-      tA = X;
-      tB = 0.0f;
-      tC = Z;
-    } else {
-      // Sector 5
-      tA = 0.0f;
-      tB = -Z;
-      tC = -Y;
-    }
-  } else {
-    if (Y < 0.0f) {
-      // Sector 4
-      tA = -Y;
-      tB = -X;
-      tC = 0.0f;
-    } else if (Z < 0.0f) {
-      // Sector 3
-      tA = 0.0f;
-      tB = -Z;
-      tC = Y;
-    } else {
-      // Sector 2
-      tA = Z;
-      tB = 0.0f;
-      tC = X;
-    }
-  }
+  // SPWM
+  float ad, bd, cd;
+  svm(alpha, beta, &ad, &bd, &cd);
 
-  // Normalize total time (modulation index ≤ 1)
-  float32_t t_sum = tA + tB + tC;
-  float32_t scale = 0.5f;  // center the vector in the PWM period (Ts/2)
-
-  // Final duty cycles (normalized 0–1)
-  *d_a = (tA + scale * (1.0f - t_sum));
-  *d_b = (tB + scale * (1.0f - t_sum));
-  *d_c = (tC + scale * (1.0f - t_sum));
+  // Update duty cycles
+  DUTY_CYCLE(hrtim, HRTIM_TIMERINDEX_TIMER_A, ad);
+  DUTY_CYCLE(hrtim, HRTIM_TIMERINDEX_TIMER_B, bd);
+  DUTY_CYCLE(hrtim, HRTIM_TIMERINDEX_TIMER_C, cd);
 }

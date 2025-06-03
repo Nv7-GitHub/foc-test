@@ -7,11 +7,13 @@
             "intelliSenseMode": "${default}",
             "includePath": [
                 "${default}",
-                "${workspaceFolder}/Core/Inc",
                 "${workspaceFolder}/Drivers/STM32G4xx_HAL_Driver/Inc",
+                "${workspaceFolder}/Drivers/STM32G4xx_HAL_Driver/Inc/Legacy",
+                "${workspaceFolder}/Core/Inc",
                 "${workspaceFolder}/Drivers/CMSIS/Device/ST/STM32G4xx/Include",
                 "${workspaceFolder}/Drivers/CMSIS/Core/Include",
                 "${workspaceFolder}/Drivers/CMSIS/DSP/Include",
+                "${workspaceFolder}/Drivers/CMSIS/Include",
                 "${workspaceFolder}/Drivers/BSP/STM32G4xx_Nucleo"
             ],
             "defines": [

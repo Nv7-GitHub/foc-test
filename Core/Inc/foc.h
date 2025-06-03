@@ -11,14 +11,16 @@
 extern "C" {
 #endif
 
-#include <math.h>
+#include <stdbool.h>
 
-#include "arm_math.h"
+#include "foc_math.h"
+#include "peripheral.h"
 
-#define M_1_SQRT3 0.57735026919f  // 1/sqrt(3)
-#define M_2_3 0.66666666667f      // 2/3
-#define M_SQRT3_2 0.86602540378f  // sqrt(3)/2
-#define M_SQRT3 1.73205080757f    // sqrt(3)
+extern uint16_t CSA[4];  // CSA, CSB, CSC, VBUS
+extern bool FOC_EN;
+extern float I_Ref;
+
+void FOC_Handler(HRTIM_HandleTypeDef *hrtim, SPI_HandleTypeDef *hspi);
 
 #ifdef __cplusplus
 }
