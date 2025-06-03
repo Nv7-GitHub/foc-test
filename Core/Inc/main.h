@@ -27,14 +27,14 @@ extern "C" {
 #endif
 
 /* Includes ------------------------------------------------------------------*/
-#include "stm32g4xx_hal.h"
-
-#include "stm32g4xx_nucleo.h"
 #include <stdio.h>
+
+#include "stm32g4xx_hal.h"
+#include "stm32g4xx_nucleo.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-// #include "arm_math.h" // TODO: Use cmsis-dsp
+
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/

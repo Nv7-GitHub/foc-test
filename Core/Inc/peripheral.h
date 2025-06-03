@@ -11,6 +11,8 @@
 extern "C" {
 #endif
 
+#include <math.h>
+
 #include "main.h"
 #include "stm32g4xx_hal.h"
 

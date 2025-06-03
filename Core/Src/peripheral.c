@@ -21,12 +21,13 @@ void DUTY_CYCLE(HRTIM_HandleTypeDef *hrrtim, uint32_t timind, float duty) {
   } else if (duty > 1.0f) {
     duty = 1.0f;
   }
-  __HAL_HRTIM_SetCompare(&hrrtim, timind, HRTIM_COMPAREUNIT_1,
+  __HAL_HRTIM_SetCompare(hrrtim, timind, HRTIM_COMPAREUNIT_1,
                          (uint32_t)(PERIOD * (1.0f - duty)) / 2);
-  __HAL_HRTIM_SetCompare(&hrrtim, timind, HRTIM_COMPAREUNIT_2,
+  __HAL_HRTIM_SetCompare(hrrtim, timind, HRTIM_COMPAREUNIT_2,
                          (uint32_t)(PERIOD * (1.0f + duty)) / 2);
 }
 
+// In radians
 float MT_READ(SPI_HandleTypeDef *hspi) {
   uint8_t tx_buf[2] = {
       0x00, 0x00};      // Transmit dummy data (MT6701 ignores MOSI during read)
@@ -53,7 +54,7 @@ float MT_READ(SPI_HandleTypeDef *hspi) {
   angle_raw =
       (data_shifted_for_dummy >> 1) & 0x3FFF;  // 0x3FFF is a 14-bit mask
 
-  angle_degrees = ((float)angle_raw) / 16384.0f * 360.0f;
+  angle_degrees = ((float)angle_raw) / 16384.0f * 2 * M_PI;
 
   return angle_degrees;
 }
