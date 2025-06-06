@@ -21,7 +21,15 @@ uint16_t CSA[4];  // CSA, CSB, CSC, VBUS
 float32_t I_ref;
 bool FOC_EN = true;
 
-void FOC_Handler(HRTIM_HandleTypeDef *hrtim, SPI_HandleTypeDef *hspi) {
+static inline float scale_CSA(uint16_t CSA) {
+  return ((float)CSA - 2048.0f) * CSA_SCALE;
+}
+
+void FOC_Handler(HRTIM_HandleTypeDef *hrtim, SPI_HandleTypeDef *hspi,
+                 DAC_HandleTypeDef *hdac) {
+  // DEBUG
+  HAL_GPIO_WritePin(TIMING_OUT_GPIO_Port, TIMING_OUT_Pin, GPIO_PIN_SET);
+
   if (!FOC_EN) {
     DUTY_CYCLE(hrtim, HRTIM_TIMERINDEX_TIMER_A, 0.0f);
     DUTY_CYCLE(hrtim, HRTIM_TIMERINDEX_TIMER_B, 0.0f);
@@ -36,8 +44,8 @@ void FOC_Handler(HRTIM_HandleTypeDef *hrtim, SPI_HandleTypeDef *hspi) {
 
   // Calculate measured currents
   float32_t di, qi;
-  abc_to_dq(CSA[0] * CSA_SCALE, CSA[1] * CSA_SCALE, CSA[2] * CSA_SCALE,
-            cos_theta, sin_theta, &di, &qi);
+  abc_to_dq(scale_CSA(CSA[0]), scale_CSA(CSA[1]), scale_CSA(CSA[2]), cos_theta,
+            sin_theta, &di, &qi);
 
   // Update current controller
   float32_t alpha, beta;
@@ -49,7 +57,11 @@ void FOC_Handler(HRTIM_HandleTypeDef *hrtim, SPI_HandleTypeDef *hspi) {
   svm(alpha, beta, &ad, &bd, &cd);
 
   // Update duty cycles
-  DUTY_CYCLE(hrtim, HRTIM_TIMERINDEX_TIMER_A, ad);
+  /*DUTY_CYCLE(hrtim, HRTIM_TIMERINDEX_TIMER_A, ad);
   DUTY_CYCLE(hrtim, HRTIM_TIMERINDEX_TIMER_B, bd);
-  DUTY_CYCLE(hrtim, HRTIM_TIMERINDEX_TIMER_C, cd);
+  DUTY_CYCLE(hrtim, HRTIM_TIMERINDEX_TIMER_C, cd);*/
+
+  // DEBUG
+  HAL_GPIO_WritePin(TIMING_OUT_GPIO_Port, TIMING_OUT_Pin, GPIO_PIN_RESET);
+  HAL_DAC_SetValue(hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, (uint32_t)(qi * 2048));
 }

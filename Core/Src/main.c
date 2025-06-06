@@ -120,7 +120,7 @@ int main(void) {
   HAL_HRTIM_WaveformCounterStart(
       &hhrtim1, HRTIM_TIMERID_TIMER_A | HRTIM_TIMERID_TIMER_B |
                     HRTIM_TIMERID_TIMER_C | HRTIM_TIMERID_MASTER);
-  HAL_HRTIM_WaveformCounterStart_IT(&hhrtim1, HRTIM_TIMERID_MASTER);
+  __HAL_HRTIM_TIMER_ENABLE_IT(&hhrtim1, HRTIM_TIMERID_MASTER, HRTIM_TIM_IT_REP);
 
   DUTY_CYCLE(&hhrtim1, HRTIM_TIMERINDEX_TIMER_A, 0.0f);
   DUTY_CYCLE(&hhrtim1, HRTIM_TIMERINDEX_TIMER_B, 0.0f);
@@ -183,25 +183,18 @@ int main(void) {
   SPI_MODE_MT(&hspi1);
 
   float theta = 0;
-  const float duty = 0.1;
+  const float duty = 0.03;
+  float delta = 0.0733 / 3;
   while (1) {
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-    HAL_GPIO_WritePin(TIMING_OUT_GPIO_Port, TIMING_OUT_Pin, GPIO_PIN_SET);
-    theta += 0.0733 / 3;
-    float a = cos(theta);
-    float b = -0.5 * cos(theta) + 0.8660254 * sin(theta);
-    float c = -0.5 * cos(theta) - 0.8660254 * sin(theta);
-    float off = (fmax(fmax(a, b), c) + fmin(fmin(a, b), c)) / 2;
-
-    a = 0.5 + 0.5 * (a - off);
-    b = 0.5 + 0.5 * (b - off);
-    c = 0.5 + 0.5 * (c - off);
-
-    a *= duty;
-    b *= duty;
-    c *= duty;
+    /*HAL_GPIO_WritePin(TIMING_OUT_GPIO_Port, TIMING_OUT_Pin, GPIO_PIN_SET);
+    theta += delta;
+    float alpha = duty * arm_cos_f32(theta);
+    float beta = duty * arm_sin_f32(theta);
+    float a, b, c;
+    svm(alpha, beta, &a, &b, &c);
 
     DUTY_CYCLE(&hhrtim1, HRTIM_TIMERINDEX_TIMER_A, a);
     DUTY_CYCLE(&hhrtim1, HRTIM_TIMERINDEX_TIMER_B, b);
@@ -217,7 +210,7 @@ int main(void) {
 
     HAL_Delay(1);
     printf("csa:%f,csb:%f,csc:%f,vbus:%u,angle:%f,a:%f,b:%f,c:%f\n", csa, csb,
-           csc, CSA[3], angle, a * 2048.0f, b * 2048.0f, c * 2048.0f);
+           csc, CSA[3], angle, a, b, c);*/
   }
   /* USER CODE END 3 */
 }
@@ -697,7 +690,8 @@ static void MX_GPIO_Init(void) {
 void HAL_HRTIM_RepetitionEventCallback(HRTIM_HandleTypeDef *hhrtim,
                                        uint32_t TimerIdx) {
   if (TimerIdx == HRTIM_TIMERID_MASTER) {
-    FOC_Handler(hhrtim, &hspi1);
+    // FOC_Handler(hhrtim, &hspi1, &hdac1);
+    HAL_Delay(1);
   }
 }
 /* USER CODE END 4 */

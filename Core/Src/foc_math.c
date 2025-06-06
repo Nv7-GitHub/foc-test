@@ -83,56 +83,69 @@ void foc_pi_update(float32_t ref_i, float32_t d, float32_t q, float32_t vbus,
 
 void svm(float32_t alpha, float32_t beta, float32_t* d_a, float32_t* d_b,
          float32_t* d_c) {
-  // Calculate times (unnormalized)
-  float32_t X = beta;
-  float32_t Y = -0.5f * beta + M_SQRT3_2 * alpha;
-  float32_t Z = -0.5f * beta - M_SQRT3_2 * alpha;
-
   float32_t tA, tB, tC;
+  int32_t sextant;
 
-  // Determine sector
-  if (X >= 0.0f) {
-    if (Y >= 0.0f) {
-      // Sector 1
-      tA = Y;
-      tB = X;
-      tC = 0.0f;
-    } else if (Z >= 0.0f) {
-      // Sector 6
-      tA = X;
-      tB = 0.0f;
-      tC = Z;
-    } else {
-      // Sector 5
-      tA = 0.0f;
-      tB = -Z;
-      tC = -Y;
-    }
+  if (beta >= 0.f) {
+    if (alpha >= 0.f)
+      sextant = (M_1_SQRT3 * beta > alpha) ? 2 : 1;
+    else
+      sextant = (-M_1_SQRT3 * beta > alpha) ? 3 : 2;
   } else {
-    if (Y < 0.0f) {
-      // Sector 4
-      tA = -Y;
-      tB = -X;
-      tC = 0.0f;
-    } else if (Z < 0.0f) {
-      // Sector 3
-      tA = 0.0f;
-      tB = -Z;
-      tC = Y;
-    } else {
-      // Sector 2
-      tA = Z;
-      tB = 0.0f;
-      tC = X;
+    if (alpha >= 0.f)
+      sextant = (-M_1_SQRT3 * beta > alpha) ? 5 : 6;
+    else {
+      sextant = (M_1_SQRT3 * beta > alpha) ? 4 : 5;
     }
   }
 
-  // Normalize total time (modulation index ≤ 1)
-  float32_t t_sum = tA + tB + tC;
-  float32_t scale = 0.5f;  // center the vector in the PWM period (Ts/2)
+  switch (sextant) {
+    case 1: {
+      float32_t t1 = alpha - M_1_SQRT3 * beta;
+      float32_t t2 = M_1_SQRT3 * 2.0f * beta;
+      tA = (1.f - t1 - t2) * .5f;
+      tB = tA + t1;
+      tC = tB + t2;
+    } break;
+    case 2: {
+      float32_t t2 = alpha + M_1_SQRT3 * beta;
+      float32_t t3 = -alpha + M_1_SQRT3 * beta;
+      tB = (1.f - t2 - t3) * .5f;
+      tA = tB + t3;
+      tC = tA + t2;
+    } break;
+    case 3: {
+      float32_t t3 = M_1_SQRT3 * 2.0f * beta;
+      float32_t t4 = -alpha - M_1_SQRT3 * beta;
+      tB = (1.f - t3 - t4) * .5f;
+      tC = tB + t3;
+      tA = tC + t4;
+    } break;
+    case 4: {
+      float32_t t4 = -alpha + M_1_SQRT3 * beta;
+      float32_t t5 = -M_1_SQRT3 * 2.0f * beta;
+      tC = (1.0f - t4 - t5) * .5f;
+      tB = tC + t5;
+      tA = tB + t4;
+    } break;
+    case 5: {
+      float32_t t5 = -alpha - M_1_SQRT3 * beta;
+      float32_t t6 = alpha - M_1_SQRT3 * beta;
+      tC = (1.f - t5 - t6) * .5f;
+      tA = tC + t5;
+      tB = tA + t6;
+    } break;
+    case 6: {
+      float32_t t6 = -M_1_SQRT3 * 2.0f * beta;
+      float32_t t1 = alpha + M_1_SQRT3 * beta;
+      tA = (1.f - t6 - t1) * .5f;
+      tC = tA + t1;
+      tB = tC + t6;
+    } break;
+  }
 
-  // Final duty cycles (normalized 0–1)
-  *d_a = (tA + scale * (1.0f - t_sum));
-  *d_b = (tB + scale * (1.0f - t_sum));
-  *d_c = (tC + scale * (1.0f - t_sum));
+  // Assign the results to the output pointers
+  *d_a = 1.f - tA;
+  *d_b = 1.f - tB;
+  *d_c = 1.f - tC;
 }

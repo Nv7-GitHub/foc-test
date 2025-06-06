@@ -20,7 +20,8 @@ extern uint16_t CSA[4];  // CSA, CSB, CSC, VBUS
 extern bool FOC_EN;
 extern float I_Ref;
 
-void FOC_Handler(HRTIM_HandleTypeDef *hrtim, SPI_HandleTypeDef *hspi);
+void FOC_Handler(HRTIM_HandleTypeDef *hrtim, SPI_HandleTypeDef *hspi,
+                 DAC_HandleTypeDef *hdac);
 
 #ifdef __cplusplus
 }
