@@ -428,7 +428,7 @@ static void MX_HRTIM1_Init(void) {
     Error_Handler();
   }
   pTimeBaseCfg.Period = 0xFFF7;
-  pTimeBaseCfg.RepetitionCounter = 0x03;
+  pTimeBaseCfg.RepetitionCounter = 0x01;
   pTimeBaseCfg.PrescalerRatio = HRTIM_PRESCALERRATIO_MUL8;
   pTimeBaseCfg.Mode = HRTIM_MODE_CONTINUOUS;
   if (HAL_HRTIM_TimeBaseConfig(&hhrtim1, HRTIM_TIMERINDEX_MASTER,
