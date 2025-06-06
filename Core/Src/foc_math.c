@@ -1,13 +1,17 @@
 #include "foc_math.h"
 
 #define POLE_PAIRS 7  // 2pi/(Angle A - Angle B), 7 for A2212
-#define ANGLE_A_RAD 0
+#define ANGLE_A_RAD 0.97
 // If angle of B is under angle of A, then the direction of the sensor is
 // flipped so set this to -1
-#define DIRECTION 1
+#define DIRECTION -1
 
 float32_t mech2elec(float32_t angle) {
-  return fmodf((angle - ANGLE_A_RAD) * POLE_PAIRS * DIRECTION, 2.0f * M_PI);
+  float32_t theta = (angle - ANGLE_A_RAD) * POLE_PAIRS * DIRECTION;
+  while (theta < 0.0f) {
+    theta += 2.0f * M_PI;
+  }
+  return fmodf(theta, 2.0f * M_PI);
 }
 
 // Clarke/park transform

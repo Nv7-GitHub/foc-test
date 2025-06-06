@@ -73,7 +73,7 @@ static void MX_DAC1_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
+extern bool FOC_EN;
 /* USER CODE END 0 */
 
 /**
@@ -117,10 +117,14 @@ int main(void) {
   // HRTIM
   HAL_HRTIM_WaveformOutputStart(
       &hhrtim1, HRTIM_OUTPUT_TA1 | HRTIM_OUTPUT_TB1 | HRTIM_OUTPUT_TC1);
-  HAL_HRTIM_WaveformCounterStart(
-      &hhrtim1, HRTIM_TIMERID_TIMER_A | HRTIM_TIMERID_TIMER_B |
-                    HRTIM_TIMERID_TIMER_C | HRTIM_TIMERID_MASTER);
-  __HAL_HRTIM_TIMER_ENABLE_IT(&hhrtim1, HRTIM_TIMERID_MASTER, HRTIM_TIM_IT_REP);
+  HAL_HRTIM_WaveformCounterStart(&hhrtim1, HRTIM_TIMERID_TIMER_A |
+                                               HRTIM_TIMERID_TIMER_B |
+                                               HRTIM_TIMERID_TIMER_C);
+  HAL_HRTIM_WaveformCounterStart_IT(&hhrtim1, HRTIM_TIMERID_MASTER);
+  /*HAL_HRTIM_TIMxRegisterCallback(&hhrtim1,
+                                 HAL_HRTIM_REPETITIONEVENTCALLBACK_CB_ID,
+                                 &HAL_HRTIM_RepetitionEventCallback);*/
+  __enable_irq();
 
   DUTY_CYCLE(&hhrtim1, HRTIM_TIMERINDEX_TIMER_A, 0.0f);
   DUTY_CYCLE(&hhrtim1, HRTIM_TIMERINDEX_TIMER_B, 0.0f);
@@ -181,36 +185,29 @@ int main(void) {
 
   // MT
   SPI_MODE_MT(&hspi1);
-
-  float theta = 0;
-  const float duty = 0.03;
-  float delta = 0.0733 / 3;
+  FOC_EN = true;
+  // int timind = 0;
   while (1) {
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-    /*HAL_GPIO_WritePin(TIMING_OUT_GPIO_Port, TIMING_OUT_Pin, GPIO_PIN_SET);
-    theta += delta;
-    float alpha = duty * arm_cos_f32(theta);
-    float beta = duty * arm_sin_f32(theta);
-    float a, b, c;
-    svm(alpha, beta, &a, &b, &c);
 
-    DUTY_CYCLE(&hhrtim1, HRTIM_TIMERINDEX_TIMER_A, a);
-    DUTY_CYCLE(&hhrtim1, HRTIM_TIMERINDEX_TIMER_B, b);
-    DUTY_CYCLE(&hhrtim1, HRTIM_TIMERINDEX_TIMER_C, c);
-
-    float csa = (float)CSA[0] - 2048.0f;
-    float csb = (float)CSA[1] - 2048.0f;
-    float csc = (float)CSA[2] - 2048.0f;
-
+    /*if (timind == 0) {
+      DUTY_CYCLE(&hhrtim1, HRTIM_TIMERINDEX_TIMER_A, 0.02);
+      DUTY_CYCLE(&hhrtim1, HRTIM_TIMERINDEX_TIMER_B, 0.0f);
+      DUTY_CYCLE(&hhrtim1, HRTIM_TIMERINDEX_TIMER_C, 0.0f);
+    } else if (timind == 1) {
+      DUTY_CYCLE(&hhrtim1, HRTIM_TIMERINDEX_TIMER_A, 0.0f);
+      DUTY_CYCLE(&hhrtim1, HRTIM_TIMERINDEX_TIMER_B, 0.02);
+      DUTY_CYCLE(&hhrtim1, HRTIM_TIMERINDEX_TIMER_C, 0.0f);
+    } else if (timind == 2) {
+      DUTY_CYCLE(&hhrtim1, HRTIM_TIMERINDEX_TIMER_A, 0.0f);
+      DUTY_CYCLE(&hhrtim1, HRTIM_TIMERINDEX_TIMER_B, 0.0f);
+      DUTY_CYCLE(&hhrtim1, HRTIM_TIMERINDEX_TIMER_C, 0.02);
+    }
     float angle = MT_READ(&hspi1);
-    HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_1, DAC_ALIGN_12B_R, CSA[3]);
-    HAL_GPIO_WritePin(TIMING_OUT_GPIO_Port, TIMING_OUT_Pin, GPIO_PIN_RESET);
-
-    HAL_Delay(1);
-    printf("csa:%f,csb:%f,csc:%f,vbus:%u,angle:%f,a:%f,b:%f,c:%f\n", csa, csb,
-           csc, CSA[3], angle, a, b, c);*/
+    printf("angle:%f\n", angle);
+    HAL_Delay(10);*/
   }
   /* USER CODE END 3 */
 }
@@ -438,7 +435,7 @@ static void MX_HRTIM1_Init(void) {
                                &pTimeBaseCfg) != HAL_OK) {
     Error_Handler();
   }
-  pTimerCfg.InterruptRequests = HRTIM_MASTER_IT_NONE;
+  pTimerCfg.InterruptRequests = HRTIM_MASTER_IT_MREP;
   pTimerCfg.DMARequests = HRTIM_MASTER_DMA_NONE;
   pTimerCfg.DMASrcAddress = 0x0000;
   pTimerCfg.DMADstAddress = 0x0000;
@@ -448,10 +445,10 @@ static void MX_HRTIM1_Init(void) {
   pTimerCfg.StartOnSync = HRTIM_SYNCSTART_DISABLED;
   pTimerCfg.ResetOnSync = HRTIM_SYNCRESET_DISABLED;
   pTimerCfg.DACSynchro = HRTIM_DACSYNC_NONE;
-  pTimerCfg.PreloadEnable = HRTIM_PRELOAD_DISABLED;
+  pTimerCfg.PreloadEnable = HRTIM_PRELOAD_ENABLED;
   pTimerCfg.UpdateGating = HRTIM_UPDATEGATING_INDEPENDENT;
   pTimerCfg.BurstMode = HRTIM_TIMERBURSTMODE_MAINTAINCLOCK;
-  pTimerCfg.RepetitionUpdate = HRTIM_UPDATEONREPETITION_DISABLED;
+  pTimerCfg.RepetitionUpdate = HRTIM_UPDATEONREPETITION_ENABLED;
   pTimerCfg.ReSyncUpdate = HRTIM_TIMERESYNC_UPDATE_UNCONDITIONAL;
   if (HAL_HRTIM_WaveformTimerConfig(&hhrtim1, HRTIM_TIMERINDEX_MASTER,
                                     &pTimerCfg) != HAL_OK) {
@@ -484,6 +481,8 @@ static void MX_HRTIM1_Init(void) {
   }
   pTimerCfg.InterruptRequests = HRTIM_TIM_IT_NONE;
   pTimerCfg.DMARequests = HRTIM_TIM_DMA_NONE;
+  pTimerCfg.PreloadEnable = HRTIM_PRELOAD_DISABLED;
+  pTimerCfg.RepetitionUpdate = HRTIM_UPDATEONREPETITION_DISABLED;
   pTimerCfg.PushPull = HRTIM_TIMPUSHPULLMODE_DISABLED;
   pTimerCfg.FaultEnable = HRTIM_TIMFAULTENABLE_NONE;
   pTimerCfg.FaultLock = HRTIM_TIMFAULTLOCK_READWRITE;
@@ -667,6 +666,14 @@ static void MX_GPIO_Init(void) {
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOB, DRV_CS_Pin | MT_CS_Pin, GPIO_PIN_RESET);
 
+  /*Configure GPIO pins : PA2 PA3 */
+  GPIO_InitStruct.Pin = GPIO_PIN_2 | GPIO_PIN_3;
+  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  GPIO_InitStruct.Alternate = GPIO_AF12_LPUART1;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
   /*Configure GPIO pin : TIMING_OUT_Pin */
   GPIO_InitStruct.Pin = TIMING_OUT_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
@@ -687,13 +694,7 @@ static void MX_GPIO_Init(void) {
 }
 
 /* USER CODE BEGIN 4 */
-void HAL_HRTIM_RepetitionEventCallback(HRTIM_HandleTypeDef *hhrtim,
-                                       uint32_t TimerIdx) {
-  if (TimerIdx == HRTIM_TIMERID_MASTER) {
-    // FOC_Handler(hhrtim, &hspi1, &hdac1);
-    HAL_Delay(1);
-  }
-}
+
 /* USER CODE END 4 */
 
 /**

@@ -18,27 +18,31 @@ const float32_t VBUS_SCALE =
     (VREF / ADC_MAX) * ((R1 + R2) / R2);  // Volt per ADC tick
 
 uint16_t CSA[4];  // CSA, CSB, CSC, VBUS
-float32_t I_ref;
-bool FOC_EN = true;
+float32_t I_ref = 0.5;
+bool FOC_EN = false;
 
 static inline float scale_CSA(uint16_t CSA) {
   return ((float)CSA - 2048.0f) * CSA_SCALE;
 }
 
-void FOC_Handler(HRTIM_HandleTypeDef *hrtim, SPI_HandleTypeDef *hspi,
-                 DAC_HandleTypeDef *hdac) {
+extern HRTIM_HandleTypeDef hhrtim1;
+extern SPI_HandleTypeDef hspi1;
+extern DAC_HandleTypeDef hdac1;
+
+void FOC_Handler() {
   // DEBUG
   HAL_GPIO_WritePin(TIMING_OUT_GPIO_Port, TIMING_OUT_Pin, GPIO_PIN_SET);
 
   if (!FOC_EN) {
-    DUTY_CYCLE(hrtim, HRTIM_TIMERINDEX_TIMER_A, 0.0f);
-    DUTY_CYCLE(hrtim, HRTIM_TIMERINDEX_TIMER_B, 0.0f);
-    DUTY_CYCLE(hrtim, HRTIM_TIMERINDEX_TIMER_C, 0.0f);
+    DUTY_CYCLE(&hhrtim1, HRTIM_TIMERINDEX_TIMER_A, 0.0f);
+    DUTY_CYCLE(&hhrtim1, HRTIM_TIMERINDEX_TIMER_B, 0.0f);
+    DUTY_CYCLE(&hhrtim1, HRTIM_TIMERINDEX_TIMER_C, 0.0f);
     return;
   }
 
   // Read sensors
-  float32_t theta = mech2elec(MT_READ(hspi));
+  float theta_raw = MT_READ(&hspi1);
+  float32_t theta = mech2elec(theta_raw);
   float32_t sin_theta = arm_sin_f32(theta);
   float32_t cos_theta = arm_cos_f32(theta);
 
@@ -52,16 +56,28 @@ void FOC_Handler(HRTIM_HandleTypeDef *hrtim, SPI_HandleTypeDef *hspi,
   foc_pi_update(I_ref, di, qi, CSA[3] * VBUS_SCALE, &alpha, &beta, sin_theta,
                 cos_theta);
 
+  if (alpha > 0.2) {
+    alpha = 0.2;
+  } else if (alpha < -0.2) {
+    alpha = -0.2;
+  }
+  if (beta > 0.2) {
+    beta = 0.2;
+  } else if (beta < -0.2) {
+    beta = -0.2;
+  }
+
   // SPWM
   float ad, bd, cd;
   svm(alpha, beta, &ad, &bd, &cd);
 
   // Update duty cycles
-  /*DUTY_CYCLE(hrtim, HRTIM_TIMERINDEX_TIMER_A, ad);
-  DUTY_CYCLE(hrtim, HRTIM_TIMERINDEX_TIMER_B, bd);
-  DUTY_CYCLE(hrtim, HRTIM_TIMERINDEX_TIMER_C, cd);*/
+  DUTY_CYCLE(&hhrtim1, HRTIM_TIMERINDEX_TIMER_A, ad);
+  DUTY_CYCLE(&hhrtim1, HRTIM_TIMERINDEX_TIMER_B, bd);
+  DUTY_CYCLE(&hhrtim1, HRTIM_TIMERINDEX_TIMER_C, cd);
 
   // DEBUG
   HAL_GPIO_WritePin(TIMING_OUT_GPIO_Port, TIMING_OUT_Pin, GPIO_PIN_RESET);
-  HAL_DAC_SetValue(hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, (uint32_t)(qi * 2048));
+  HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_1, DAC_ALIGN_12B_R,
+                   (uint32_t)(qi * 2048));
 }
