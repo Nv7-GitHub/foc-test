@@ -17,11 +17,14 @@ extern "C" {
 #include "peripheral.h"
 
 extern uint16_t CSA[4];  // CSA, CSB, CSC, VBUS
-extern float I_Ref;
+extern float I_ref;
 
 void FOC_Handler();
 void FOC_Enable();
 void FOC_Disable();
+
+extern float vel;
+extern float pos;
 
 #ifdef __cplusplus
 }

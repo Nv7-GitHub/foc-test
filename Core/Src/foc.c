@@ -15,6 +15,11 @@
 #define R1 1000.0f  // Ohms
 #define R2 330.0f   // Ohms
 
+// Sensing output
+float vel = 0;
+float pos = 0;
+float32_t prevTheta = 0;
+
 const float32_t CSA_SCALE =
     VREF / (RESISTANCE * GAIN * ADC_MAX);  // Amp per ADC tick
 const float32_t VBUS_SCALE =
@@ -30,7 +35,12 @@ extern HRTIM_HandleTypeDef hhrtim1;
 extern SPI_HandleTypeDef hspi1;
 extern DAC_HandleTypeDef hdac1;
 
-void FOC_Enable() { FOC_EN = true; }
+void FOC_Enable() {
+  FOC_EN = true;
+  prevTheta = MT_READ(&hspi1);
+  vel = 0;
+  pos = 0;
+}
 
 void FOC_Disable() {
   DUTY_CYCLE(&hhrtim1, HRTIM_TIMERINDEX_TIMER_A, 0.0f);
@@ -38,6 +48,8 @@ void FOC_Disable() {
   DUTY_CYCLE(&hhrtim1, HRTIM_TIMERINDEX_TIMER_C, 0.0f);
   FOC_EN = false;
 }
+
+extern const float32_t DT;
 
 void FOC_Handler() {
   if (!FOC_EN) {
@@ -63,15 +75,15 @@ void FOC_Handler() {
   foc_pi_update(I_ref, di, qi, CSA[3] * VBUS_SCALE, &alpha, &beta, sin_theta,
                 cos_theta);
 
-  if (alpha > 0.2) {
-    alpha = 0.2;
-  } else if (alpha < -0.2) {
-    alpha = -0.2;
+  if (alpha > 0.1) {
+    alpha = 0.1;
+  } else if (alpha < -0.1) {
+    alpha = -0.1;
   }
-  if (beta > 0.2) {
-    beta = 0.2;
-  } else if (beta < -0.2) {
-    beta = -0.2;
+  if (beta > 0.1) {
+    beta = 0.1;
+  } else if (beta < -0.1) {
+    beta = -0.1;
   }
 
   // SPWM
@@ -83,8 +95,19 @@ void FOC_Handler() {
   DUTY_CYCLE(&hhrtim1, HRTIM_TIMERINDEX_TIMER_B, bd);
   DUTY_CYCLE(&hhrtim1, HRTIM_TIMERINDEX_TIMER_C, cd);
 
+  // Update vel/pos
+  float32_t delta = theta_raw - prevTheta;
+  if (delta > M_PI) {
+    delta -= 2 * M_PI;
+  } else if (delta < -M_PI) {
+    delta += 2 * M_PI;
+  }
+  prevTheta = theta_raw;
+  vel = vel * 0.9 + (delta / DT) * 0.1;
+  pos += delta;
+
   // DEBUG
   HAL_GPIO_WritePin(TIMING_OUT_GPIO_Port, TIMING_OUT_Pin, GPIO_PIN_RESET);
   HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_1, DAC_ALIGN_12B_R,
-                   (uint32_t)(qi * 2048));
+                   (uint32_t)(-vel * 20));
 }

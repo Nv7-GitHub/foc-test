@@ -186,11 +186,21 @@ int main(void) {
   // MT
   SPI_MODE_MT(&hspi1);
   FOC_Enable();
+  float target_vel = -20.0f;  // rad/s
   // int timind = 0;
   while (1) {
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+    // Velocity PID
+    I_ref = -0.2f * (target_vel - vel);
+    if (I_ref < 0.0f) {
+      I_ref = 0.0f;
+    }
+    if (I_ref > 7.0f) {
+      I_ref = 7.0f;
+    }
+    HAL_Delay(5);
 
     // RESISTANCE MEASUREMENT
     /*DUTY_CYCLE(&hhrtim1, HRTIM_TIMERINDEX_TIMER_A, 0.02f);
