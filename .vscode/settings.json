@@ -19,6 +19,7 @@
     "complex": "c",
     "cmath": "c",
     "peripheral.h": "c",
-    "foc.h": "c"
+    "foc.h": "c",
+    "cstdint": "c"
   }
 }

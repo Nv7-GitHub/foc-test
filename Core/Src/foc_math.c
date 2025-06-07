@@ -8,9 +8,6 @@
 
 float32_t mech2elec(float32_t angle) {
   float32_t theta = (angle - ANGLE_A_RAD) * POLE_PAIRS * DIRECTION;
-  while (theta < 0.0f) {
-    theta += 2.0f * M_PI;
-  }
   return fmodf(theta, 2.0f * M_PI);
 }
 
@@ -31,7 +28,7 @@ void abc_to_dq(float32_t a, float32_t b, float32_t c, float32_t cos_theta,
 // PI controller parameters
 #define BANDWIDTH 160 * 2 * M_PI  // Bandwidth in Hz * 2pi
 #define INDUCTANCE 2.6e-5         // Henries
-#define RESISTANCE 0.1            // Ohms
+#define RESISTANCE 0.10037280035  // Ohms
 #define MAX_DUTY 0.8f             // Duty cycle out of 1
 
 // Calculated values

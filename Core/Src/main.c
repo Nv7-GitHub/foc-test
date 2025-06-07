@@ -192,6 +192,34 @@ int main(void) {
 
     /* USER CODE BEGIN 3 */
 
+    // RESISTANCE MEASUREMENT
+    /*DUTY_CYCLE(&hhrtim1, HRTIM_TIMERINDEX_TIMER_A, 0.02f);
+    DUTY_CYCLE(&hhrtim1, HRTIM_TIMERINDEX_TIMER_B, 0.0f);
+    DUTY_CYCLE(&hhrtim1, HRTIM_TIMERINDEX_TIMER_C, 0.0f);
+    float csa = 0.0040283203f * (CSA[0] - 2029);
+    float csb = 0.0040283203f * (CSA[1] - 2028);
+    float csc = 0.0040283203f * (CSA[2] - 2022);
+    float volt = CSA[3] * 0.0032470701f;
+    printf("csa:%f,csb:%f,csc:%f,volt:%f\n", csa, csb, csc, volt);
+    // Total resistance: (volt * 0.02)/csa = 0.15055920053
+    // Phase resistance: 2/3 * total resistance = 0.10037280035*/
+
+    // DETERMINING STEADY STATE
+    /*uint32_t csa_tot = 0;
+    uint32_t csb_tot = 0;
+    uint32_t csc_tot = 0;
+    for (int i = 0; i < 200; i++) {
+      csa_tot += CSA[0];
+      csb_tot += CSA[1];
+      csc_tot += CSA[2];
+      for (volatile int i = 0; i < 1700; i++) {  // 10uS delay
+        __NOP();
+      }
+    }
+    printf("csa:%lu,csb:%lu,csc:%lu\n", csa_tot / 200, csb_tot / 200,
+           csc_tot / 200);*/
+
+    // ANGLE SENSOR CALIBRATION
     /*if (timind == 0) {
       DUTY_CYCLE(&hhrtim1, HRTIM_TIMERINDEX_TIMER_A, 0.02);
       DUTY_CYCLE(&hhrtim1, HRTIM_TIMERINDEX_TIMER_B, 0.0f);

@@ -7,6 +7,9 @@
 // Current sense setup
 #define RESISTANCE 5.0f / 1000.0f  // Ohms
 #define GAIN 40                    // V/V
+#define CSA_STEADY 2029
+#define CSB_STEADY 2028
+#define CSC_STEADY 2022
 
 // VBUS voltage divider
 #define R1 1000.0f  // Ohms
@@ -21,9 +24,7 @@ uint16_t CSA[4];  // CSA, CSB, CSC, VBUS
 float32_t I_ref = 0.5;
 bool FOC_EN = false;
 
-static inline float scale_CSA(uint16_t CSA) {
-  return ((float)CSA - 2048.0f) * CSA_SCALE;
-}
+#define SCALE_CSA(CSA, STEADY) (float)(CSA - STEADY) * CSA_SCALE
 
 extern HRTIM_HandleTypeDef hhrtim1;
 extern SPI_HandleTypeDef hspi1;
@@ -54,8 +55,8 @@ void FOC_Handler() {
 
   // Calculate measured currents
   float32_t di, qi;
-  abc_to_dq(scale_CSA(CSA[0]), scale_CSA(CSA[1]), scale_CSA(CSA[2]), cos_theta,
-            sin_theta, &di, &qi);
+  abc_to_dq(SCALE_CSA(CSA[0], CSA_STEADY), SCALE_CSA(CSA[1], CSB_STEADY),
+            SCALE_CSA(CSA[2], CSC_STEADY), cos_theta, sin_theta, &di, &qi);
 
   // Update current controller
   float32_t alpha, beta;
