@@ -73,7 +73,7 @@ static void MX_DAC1_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-extern bool FOC_EN;
+
 /* USER CODE END 0 */
 
 /**
@@ -185,7 +185,7 @@ int main(void) {
 
   // MT
   SPI_MODE_MT(&hspi1);
-  FOC_EN = true;
+  FOC_Enable();
   // int timind = 0;
   while (1) {
     /* USER CODE END WHILE */

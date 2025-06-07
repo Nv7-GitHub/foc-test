@@ -29,16 +29,22 @@ extern HRTIM_HandleTypeDef hhrtim1;
 extern SPI_HandleTypeDef hspi1;
 extern DAC_HandleTypeDef hdac1;
 
-void FOC_Handler() {
-  // DEBUG
-  HAL_GPIO_WritePin(TIMING_OUT_GPIO_Port, TIMING_OUT_Pin, GPIO_PIN_SET);
+void FOC_Enable() { FOC_EN = true; }
 
+void FOC_Disable() {
+  DUTY_CYCLE(&hhrtim1, HRTIM_TIMERINDEX_TIMER_A, 0.0f);
+  DUTY_CYCLE(&hhrtim1, HRTIM_TIMERINDEX_TIMER_B, 0.0f);
+  DUTY_CYCLE(&hhrtim1, HRTIM_TIMERINDEX_TIMER_C, 0.0f);
+  FOC_EN = false;
+}
+
+void FOC_Handler() {
   if (!FOC_EN) {
-    DUTY_CYCLE(&hhrtim1, HRTIM_TIMERINDEX_TIMER_A, 0.0f);
-    DUTY_CYCLE(&hhrtim1, HRTIM_TIMERINDEX_TIMER_B, 0.0f);
-    DUTY_CYCLE(&hhrtim1, HRTIM_TIMERINDEX_TIMER_C, 0.0f);
     return;
   }
+
+  // DEBUG
+  HAL_GPIO_WritePin(TIMING_OUT_GPIO_Port, TIMING_OUT_Pin, GPIO_PIN_SET);
 
   // Read sensors
   float theta_raw = MT_READ(&hspi1);
