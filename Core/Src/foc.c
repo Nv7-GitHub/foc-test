@@ -37,7 +37,9 @@ extern DAC_HandleTypeDef hdac1;
 
 void FOC_Enable() {
   FOC_EN = true;
-  prevTheta = MT_READ(&hspi1);
+  for (int i = 0; i < 5; i++) {
+    prevTheta = MT_READ(&hspi1);
+  }
   vel = 0;
   pos = 0;
 }
@@ -48,6 +50,8 @@ void FOC_Disable() {
   DUTY_CYCLE(&hhrtim1, HRTIM_TIMERINDEX_TIMER_C, 0.0f);
   FOC_EN = false;
 }
+
+extern float32_t q_i;
 
 void FOC_Handler() {
   if (!FOC_EN) {
@@ -94,6 +98,8 @@ void FOC_Handler() {
                    (uint32_t)(I_ref * 512 + 2048));*/
   /*HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_1, DAC_ALIGN_12B_R,
                    (uint32_t)(vel * 5.85 + 2048));*/
+  /*HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_1, DAC_ALIGN_12B_R,
+                   (uint32_t)(qi * 409.5 + 2048.0f));*/
   HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_1, DAC_ALIGN_12B_R,
-                   (uint32_t)(qi * 409.5 + 2048.0f));
+                   (uint32_t)(q_i * 171 + 2048.0f));
 }

@@ -185,6 +185,7 @@ int main(void) {
 
   // MT
   SPI_MODE_MT(&hspi1);
+  HAL_Delay(5);
   FOC_Enable();
   float target_vel = 20.0f;  // rad/s
   // int timind = 0;
