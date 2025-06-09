@@ -20,6 +20,7 @@
     "cmath": "c",
     "peripheral.h": "c",
     "foc.h": "c",
-    "cstdint": "c"
+    "cstdint": "c",
+    "math.h": "c"
   }
 }

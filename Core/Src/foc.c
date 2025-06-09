@@ -49,8 +49,6 @@ void FOC_Disable() {
   FOC_EN = false;
 }
 
-extern const float32_t DT;
-
 void FOC_Handler() {
   if (!FOC_EN) {
     return;
@@ -73,18 +71,7 @@ void FOC_Handler() {
   // Update current controller
   float32_t alpha, beta;
   foc_pi_update(I_ref, di, qi, CSA[3] * VBUS_SCALE, &alpha, &beta, sin_theta,
-                cos_theta);
-
-  if (alpha > 0.1) {
-    alpha = 0.1;
-  } else if (alpha < -0.1) {
-    alpha = -0.1;
-  }
-  if (beta > 0.1) {
-    beta = 0.1;
-  } else if (beta < -0.1) {
-    beta = -0.1;
-  }
+                cos_theta, vel);
 
   // SPWM
   float ad, bd, cd;
@@ -97,17 +84,16 @@ void FOC_Handler() {
 
   // Update vel/pos
   float32_t delta = theta_raw - prevTheta;
-  if (delta > M_PI) {
-    delta -= 2 * M_PI;
-  } else if (delta < -M_PI) {
-    delta += 2 * M_PI;
-  }
   prevTheta = theta_raw;
-  vel = vel * 0.9 + (delta / DT) * 0.1;
+  vel = vel * 0.9f + calc_vel_delta(delta, &delta) * 0.1f;
   pos += delta;
 
   // DEBUG
   HAL_GPIO_WritePin(TIMING_OUT_GPIO_Port, TIMING_OUT_Pin, GPIO_PIN_RESET);
+  /*HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_1, DAC_ALIGN_12B_R,
+                   (uint32_t)(I_ref * 512 + 2048));*/
+  /*HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_1, DAC_ALIGN_12B_R,
+                   (uint32_t)(vel * 5.85 + 2048));*/
   HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_1, DAC_ALIGN_12B_R,
-                   (uint32_t)(-vel * 20));
+                   (uint32_t)(qi * 409.5 + 2048.0f));
 }

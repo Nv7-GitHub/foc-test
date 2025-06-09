@@ -25,9 +25,10 @@ void abc_to_dq(float32_t a, float32_t b, float32_t c, float32_t cos_theta,
 void foc_reset();
 void foc_pi_update(float32_t ref_i, float32_t d, float32_t q, float32_t vbus,
                    float32_t* alpha, float32_t* beta, float32_t sin_theta,
-                   float32_t cos_theta);
+                   float32_t cos_theta, float32_t ang_vel);
 void svm(float32_t alpha, float32_t beta, float32_t* d_a, float32_t* d_b,
          float32_t* d_c);
+float32_t calc_vel_delta(float32_t delta, float32_t* del);
 
 #ifdef __cplusplus
 }

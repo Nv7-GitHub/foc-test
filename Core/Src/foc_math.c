@@ -27,8 +27,9 @@ void abc_to_dq(float32_t a, float32_t b, float32_t c, float32_t cos_theta,
 
 // PI controller parameters
 #define BANDWIDTH 160 * 2 * M_PI  // Bandwidth in Hz * 2pi
-#define INDUCTANCE 2.6e-5         // Henries
+#define INDUCTANCE 1.42e-5        // Henries
 #define RESISTANCE 0.10037280035  // Ohms
+#define KV 1000                   // 1000kv motor
 #define MAX_DUTY 0.8f             // Duty cycle out of 1
 
 // Calculated values
@@ -36,6 +37,7 @@ const float32_t DT = 1.0f / 5000.0f;  // 1/looprate in hz
                                       // TODO: Get actual value
 const float32_t kP = BANDWIDTH * INDUCTANCE;
 const float32_t kI = (RESISTANCE / INDUCTANCE) * BANDWIDTH * INDUCTANCE;
+const float32_t FF_emf = 60.0f / (2 * M_PI * KV);
 
 float32_t d_i = 0;
 float32_t q_i = 0;
@@ -45,16 +47,17 @@ void foc_reset() {
   q_i = 0;
 }
 
+// NOTE: ang_vel is mechanical ang vel
 void foc_pi_update(float32_t ref_i, float32_t d, float32_t q, float32_t vbus,
                    float32_t* alpha, float32_t* beta, float32_t sin_theta,
-                   float32_t cos_theta) {
+                   float32_t cos_theta, float32_t ang_vel) {
   // PI controller
   float32_t d_err = -d;
   float32_t q_err = ref_i - q;
 
-  // TODO: Add feedforward
+  // Calculate control outputs (+backemf feedforward)
   float32_t vd = kP * d_err + d_i;
-  float32_t vq = kP * q_err + q_i;
+  float32_t vq = kP * q_err + q_i + ang_vel * FF_emf;
 
   // Convert from voltage to duty cycle
   float32_t V2d = 1.5f / vbus;
@@ -80,6 +83,17 @@ void foc_pi_update(float32_t ref_i, float32_t d, float32_t q, float32_t vbus,
 
   // Inverse park for svm
   arm_inv_park_f32(dd, dq, alpha, beta, sin_theta, cos_theta);
+}
+
+float32_t calc_vel_delta(float32_t delta, float32_t* del) {
+  delta *= (float)DIRECTION;
+  if (delta > M_PI) {
+    delta -= 2 * M_PI;
+  } else if (delta < -M_PI) {
+    delta += 2 * M_PI;
+  }
+  *del = delta;
+  return delta / DT;
 }
 
 void svm(float32_t alpha, float32_t beta, float32_t* d_a, float32_t* d_b,
