@@ -30,6 +30,8 @@ void svm(float32_t alpha, float32_t beta, float32_t* d_a, float32_t* d_b,
          float32_t* d_c);
 float32_t calc_vel_delta(float32_t delta, float32_t* del);
 
+extern const float32_t csa_alpha;
+
 #ifdef __cplusplus
 }
 #endif

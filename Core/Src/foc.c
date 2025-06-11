@@ -7,9 +7,9 @@
 // Current sense setup
 #define RESISTANCE 5.0f / 1000.0f  // Ohms
 #define GAIN 40                    // V/V
-#define CSA_STEADY 2029
-#define CSB_STEADY 2028
-#define CSC_STEADY 2022
+#define CSA_STEADY 2029.0f
+#define CSB_STEADY 2028.0f
+#define CSC_STEADY 2022.0f
 
 // VBUS voltage divider
 #define R1 1000.0f  // Ohms
@@ -26,10 +26,14 @@ const float32_t VBUS_SCALE =
     (VREF / ADC_MAX) * ((R1 + R2) / R2);  // Volt per ADC tick
 
 uint16_t CSA[4];  // CSA, CSB, CSC, VBUS
-float32_t I_ref = 0.5;
+uint16_t CSA_prev[3];
+float32_t I_ref = 0.0f;
 bool FOC_EN = false;
 
-#define SCALE_CSA(CSA, STEADY) (float)(CSA - STEADY) * CSA_SCALE
+// Low-pass filtered values for CSA/CSB/CSC
+float32_t csa_f, csb_f, csc_f;
+
+#define SCALE_CSA(CSA, STEADY) ((float)(CSA) - STEADY) * CSA_SCALE
 
 extern HRTIM_HandleTypeDef hhrtim1;
 extern SPI_HandleTypeDef hspi1;
@@ -42,6 +46,10 @@ void FOC_Enable() {
   }
   vel = 0;
   pos = 0;
+  I_ref = 0.0f;
+  csa_f = 0.0f;
+  csb_f = 0.0f;
+  csc_f = 0.0f;
 }
 
 void FOC_Disable() {
@@ -67,10 +75,26 @@ void FOC_Handler() {
   float32_t sin_theta = arm_sin_f32(theta);
   float32_t cos_theta = arm_cos_f32(theta);
 
+  // Filter current sense
+  CSA_prev[0] = CSA[0];
+  CSA_prev[1] = CSA[1];
+  CSA_prev[2] = CSA[2];
+  if (abs(CSA[0] - CSA_prev[0]) < 1000) {
+    csa_f =
+        csa_f * csa_alpha + (1.0f - csa_alpha) * SCALE_CSA(CSA[0], CSA_STEADY);
+  }
+  if (abs(CSA[1] - CSA_prev[1]) < 1000) {
+    csb_f =
+        csb_f * csa_alpha + (1.0f - csa_alpha) * SCALE_CSA(CSA[1], CSB_STEADY);
+  }
+  if (abs(CSA[2] - CSA_prev[2]) < 1000) {
+    csc_f =
+        csc_f * csa_alpha + (1.0f - csa_alpha) * SCALE_CSA(CSA[2], CSC_STEADY);
+  }
+
   // Calculate measured currents
   float32_t di, qi;
-  abc_to_dq(SCALE_CSA(CSA[0], CSA_STEADY), SCALE_CSA(CSA[1], CSB_STEADY),
-            SCALE_CSA(CSA[2], CSC_STEADY), cos_theta, sin_theta, &di, &qi);
+  abc_to_dq(csa_f, csb_f, csc_f, cos_theta, sin_theta, &di, &qi);
 
   // Update current controller
   float32_t alpha, beta;
@@ -97,9 +121,13 @@ void FOC_Handler() {
   /*HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_1, DAC_ALIGN_12B_R,
                    (uint32_t)(I_ref * 512 + 2048));*/
   /*HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_1, DAC_ALIGN_12B_R,
-                   (uint32_t)(vel * 5.85 + 2048));*/
+                   (uint32_t)(vel * 2.43 + 2048));*/
   /*HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_1, DAC_ALIGN_12B_R,
                    (uint32_t)(qi * 409.5 + 2048.0f));*/
+  /*HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_1, DAC_ALIGN_12B_R,
+                   (uint32_t)(csc_f * 409.5 + 2048.0f));*/
+  /*HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_1, DAC_ALIGN_12B_R,
+                   (uint32_t)(q_i * 171 + 2048.0f));*/
   HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_1, DAC_ALIGN_12B_R,
-                   (uint32_t)(q_i * 171 + 2048.0f));
+                   (uint32_t)(ad * 2048.0f));
 }

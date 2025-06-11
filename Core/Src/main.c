@@ -115,12 +115,14 @@ int main(void) {
   HAL_ADC_Start_DMA(&hadc1, (uint32_t *)CSA, 4);
 
   // HRTIM
-  HAL_HRTIM_WaveformOutputStart(
-      &hhrtim1, HRTIM_OUTPUT_TA1 | HRTIM_OUTPUT_TB1 | HRTIM_OUTPUT_TC1);
+  HAL_HRTIM_WaveformOutputStart(&hhrtim1, HRTIM_OUTPUT_TA1 | HRTIM_OUTPUT_TB1 |
+                                              HRTIM_OUTPUT_TC1 |
+                                              HRTIM_OUTPUT_TE1);
   HAL_HRTIM_WaveformCounterStart(&hhrtim1, HRTIM_TIMERID_TIMER_A |
                                                HRTIM_TIMERID_TIMER_B |
                                                HRTIM_TIMERID_TIMER_C);
-  HAL_HRTIM_WaveformCounterStart_IT(&hhrtim1, HRTIM_TIMERID_MASTER);
+  HAL_HRTIM_WaveformCounterStart_IT(
+      &hhrtim1, HRTIM_TIMERID_MASTER | HRTIM_TIMERID_TIMER_E);
   /*HAL_HRTIM_TIMxRegisterCallback(&hhrtim1,
                                  HAL_HRTIM_REPETITIONEVENTCALLBACK_CB_ID,
                                  &HAL_HRTIM_RepetitionEventCallback);*/
@@ -194,7 +196,7 @@ int main(void) {
 
     /* USER CODE BEGIN 3 */
     // Velocity PID
-    I_ref = 0.05f * (target_vel - vel);
+    I_ref = 0.1f * (target_vel - vel);
     if (I_ref < -2.0f) {
       I_ref = -2.0f;
     }
@@ -543,6 +545,11 @@ static void MX_HRTIM1_Init(void) {
                                     &pTimerCfg) != HAL_OK) {
     Error_Handler();
   }
+  pTimerCfg.DelayedProtectionMode = HRTIM_TIMER_D_E_DELAYEDPROTECTION_DISABLED;
+  if (HAL_HRTIM_WaveformTimerConfig(&hhrtim1, HRTIM_TIMERINDEX_TIMER_E,
+                                    &pTimerCfg) != HAL_OK) {
+    Error_Handler();
+  }
   if (HAL_HRTIM_WaveformCompareConfig(&hhrtim1, HRTIM_TIMERINDEX_TIMER_A,
                                       HRTIM_COMPAREUNIT_1,
                                       &pCompareCfg) != HAL_OK) {
@@ -574,6 +581,12 @@ static void MX_HRTIM1_Init(void) {
   }
   if (HAL_HRTIM_WaveformOutputConfig(&hhrtim1, HRTIM_TIMERINDEX_TIMER_C,
                                      HRTIM_OUTPUT_TC1, &pOutputCfg) != HAL_OK) {
+    Error_Handler();
+  }
+  pOutputCfg.SetSource = HRTIM_OUTPUTSET_MASTERCMP3;
+  pOutputCfg.ResetSource = HRTIM_OUTPUTRESET_TIMCMP1;
+  if (HAL_HRTIM_WaveformOutputConfig(&hhrtim1, HRTIM_TIMERINDEX_TIMER_E,
+                                     HRTIM_OUTPUT_TE1, &pOutputCfg) != HAL_OK) {
     Error_Handler();
   }
   if (HAL_HRTIM_TimeBaseConfig(&hhrtim1, HRTIM_TIMERINDEX_TIMER_B,
@@ -623,6 +636,21 @@ static void MX_HRTIM1_Init(void) {
 
   if (HAL_HRTIM_WaveformCompareConfig(&hhrtim1, HRTIM_TIMERINDEX_TIMER_C,
                                       HRTIM_COMPAREUNIT_2,
+                                      &pCompareCfg) != HAL_OK) {
+    Error_Handler();
+  }
+  if (HAL_HRTIM_TimeBaseConfig(&hhrtim1, HRTIM_TIMERINDEX_TIMER_E,
+                               &pTimeBaseCfg) != HAL_OK) {
+    Error_Handler();
+  }
+  pTimerCtl.UpDownMode = HRTIM_TIMERUPDOWNMODE_UP;
+  if (HAL_HRTIM_WaveformTimerControl(&hhrtim1, HRTIM_TIMERINDEX_TIMER_E,
+                                     &pTimerCtl) != HAL_OK) {
+    Error_Handler();
+  }
+  pCompareCfg.CompareValue = 600;
+  if (HAL_HRTIM_WaveformCompareConfig(&hhrtim1, HRTIM_TIMERINDEX_TIMER_E,
+                                      HRTIM_COMPAREUNIT_1,
                                       &pCompareCfg) != HAL_OK) {
     Error_Handler();
   }
@@ -704,6 +732,12 @@ static void MX_GPIO_Init(void) {
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOB, DRV_CS_Pin | MT_CS_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin : PC13 */
+  GPIO_InitStruct.Pin = GPIO_PIN_13;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
   /*Configure GPIO pins : PA2 PA3 */
   GPIO_InitStruct.Pin = GPIO_PIN_2 | GPIO_PIN_3;

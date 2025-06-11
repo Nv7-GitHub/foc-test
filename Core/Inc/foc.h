@@ -12,6 +12,7 @@ extern "C" {
 #endif
 
 #include <stdbool.h>
+#include <stdlib.h>
 
 #include "foc_math.h"
 #include "peripheral.h"

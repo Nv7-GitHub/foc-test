@@ -26,18 +26,21 @@ void abc_to_dq(float32_t a, float32_t b, float32_t c, float32_t cos_theta,
 }
 
 // PI controller parameters
-#define BANDWIDTH 160 * 2 * M_PI  // Bandwidth in Hz * 2pi
+#define BANDWIDTH 80 * 2 * M_PI   // Bandwidth in Hz * 2pi
 #define INDUCTANCE 1.42e-5        // Henries
 #define RESISTANCE 0.10037280035  // Ohms
 #define KV 1000                   // 1000kv motor
 #define MAX_DUTY 0.8f             // Duty cycle out of 1
+#define CUTOFF_FREQ 2000          // For CSA low-pass filter
 
 // Calculated values
-const float32_t DT = 1.0f / 5000.0f;  // 1/looprate in hz
-                                      // TODO: Get actual value
+const float32_t DT = 1.0f / 10000.0f;  // 1/looprate in hz
+                                       // TODO: Get actual value
 const float32_t kP = BANDWIDTH * INDUCTANCE;
 const float32_t kI = (RESISTANCE / INDUCTANCE) * BANDWIDTH * INDUCTANCE;
 const float32_t FF_emf = 60.0f / (2 * M_PI * KV);
+// const float32_t csa_alpha = DT / (DT + (1.0f / (2.0f * M_PI * CUTOFF_FREQ)));
+const float32_t csa_alpha = 0.0f;
 
 float32_t d_i = 0;
 float32_t q_i = 0;
@@ -57,7 +60,7 @@ void foc_pi_update(float32_t ref_i, float32_t d, float32_t q, float32_t vbus,
 
   // Calculate control outputs (+backemf feedforward)
   float32_t vd = kP * d_err + d_i;
-  float32_t vq = kP * q_err + q_i + ang_vel * FF_emf;
+  float32_t vq = kP * q_err + q_i;  // + ang_vel * FF_emf;
 
   // Convert from voltage to duty cycle
   float32_t V2d = 1.5f / vbus;
