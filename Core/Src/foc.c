@@ -41,8 +41,14 @@ extern DAC_HandleTypeDef hdac1;
 
 void FOC_Enable() {
   FOC_EN = true;
-  for (int i = 0; i < 5; i++) {
-    prevTheta = MT_READ(&hspi1);
+  prevTheta = 0.0f;
+  while (true) {
+    float32_t raw = MT_READ(&hspi1);
+    if (raw - prevTheta < 0.009) {  // ~0.5 deg
+      prevTheta = raw;
+      break;
+    }
+    HAL_Delay(1);
   }
   vel = 0;
   pos = 0;
@@ -98,8 +104,8 @@ void FOC_Handler() {
 
   // Update current controller
   float32_t alpha, beta;
-  foc_pi_update(I_ref, di, qi, CSA[3] * VBUS_SCALE, &alpha, &beta, sin_theta,
-                cos_theta, vel);
+  foc_pi_update(I_ref, di, qi, /*CSA[3] * VBUS_SCALE*/ 12.0f, &alpha, &beta,
+                sin_theta, cos_theta, vel);
 
   // SPWM
   float ad, bd, cd;
@@ -128,6 +134,8 @@ void FOC_Handler() {
                    (uint32_t)(csc_f * 409.5 + 2048.0f));*/
   /*HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_1, DAC_ALIGN_12B_R,
                    (uint32_t)(q_i * 171 + 2048.0f));*/
+  /*HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_1, DAC_ALIGN_12B_R,
+                   (uint32_t)(ad * 2048.0f));*/
   HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_1, DAC_ALIGN_12B_R,
-                   (uint32_t)(ad * 2048.0f));
+                   (uint32_t)(vel * 7.9f));
 }

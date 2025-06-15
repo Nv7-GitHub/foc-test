@@ -196,13 +196,14 @@ int main(void) {
 
     /* USER CODE BEGIN 3 */
     // Velocity PID
-    I_ref = 0.1f * (target_vel - vel);
-    if (I_ref < -2.0f) {
-      I_ref = -2.0f;
+    float I_new = 0.1f * (target_vel - vel);
+    if (I_new < -2.0f) {
+      I_new = -2.0f;
     }
-    if (I_ref > 2.0f) {
-      I_ref = 2.0f;
+    if (I_new > 2.0f) {
+      I_new = 2.0f;
     }
+    I_ref = I_new;
     HAL_Delay(5);
 
     // RESISTANCE MEASUREMENT
