@@ -30,8 +30,7 @@ void abc_to_dq(float32_t a, float32_t b, float32_t c, float32_t cos_theta,
 #define INDUCTANCE 1.42e-5        // Henries
 #define RESISTANCE 0.10037280035  // Ohms
 #define KV 1000                   // 1000kv motor
-#define MAX_DUTY 0.8f             // Duty cycle out of 1
-#define CUTOFF_FREQ 2000          // For CSA low-pass filter
+#define MAX_DUTY 0.9f             // Duty cycle out of 1
 
 // Calculated values
 const float32_t DT = 1.0f / 10000.0f;  // 1/looprate in hz
@@ -39,15 +38,15 @@ const float32_t DT = 1.0f / 10000.0f;  // 1/looprate in hz
 const float32_t kP = BANDWIDTH * INDUCTANCE;
 const float32_t kI = (RESISTANCE / INDUCTANCE) * BANDWIDTH * INDUCTANCE;
 const float32_t FF_emf = 60.0f / (2 * M_PI * KV);
-// const float32_t csa_alpha = DT / (DT + (1.0f / (2.0f * M_PI * CUTOFF_FREQ)));
-const float32_t csa_alpha = 0.0f;
 
 float32_t d_i = 0;
 float32_t q_i = 0;
+float32_t prevAngVel = 0.0f;
 
 void foc_reset() {
-  d_i = 0;
-  q_i = 0;
+  d_i = 0.0f;
+  q_i = 0.0f;
+  prevAngVel = 0.0f;
 }
 
 // NOTE: ang_vel is mechanical ang vel
@@ -57,6 +56,12 @@ void foc_pi_update(float32_t ref_i, float32_t d, float32_t q, float32_t vbus,
   // PI controller
   float32_t d_err = -d;
   float32_t q_err = ref_i - q;
+
+  // Error rejection
+  if (fabsf(prevAngVel - ang_vel) > 100.0f) {
+    ang_vel = prevAngVel;
+  }
+  prevAngVel = ang_vel;
 
   // Calculate control outputs (+backemf feedforward)
   float32_t vd = kP * d_err + d_i;
@@ -72,7 +77,7 @@ void foc_pi_update(float32_t ref_i, float32_t d, float32_t q, float32_t vbus,
   // will scale down the value to fit into this
   float32_t d_mag;
   arm_sqrt_f32(dd * dd + dq * dq, &d_mag);
-  float32_t d_scale = 0.8 * M_SQRT3_2 / d_mag;
+  float32_t d_scale = MAX_DUTY * M_SQRT3_2 / d_mag;
 
   if (d_scale < 1.0f) {  // Need to scale down
     dd *= d_scale;

@@ -26,12 +26,8 @@ const float32_t VBUS_SCALE =
     (VREF / ADC_MAX) * ((R1 + R2) / R2);  // Volt per ADC tick
 
 uint16_t CSA[4];  // CSA, CSB, CSC, VBUS
-uint16_t CSA_prev[3];
 float32_t I_ref = 0.0f;
 bool FOC_EN = false;
-
-// Low-pass filtered values for CSA/CSB/CSC
-float32_t csa_f, csb_f, csc_f;
 
 #define SCALE_CSA(CSA, STEADY) ((float)(CSA) - STEADY) * CSA_SCALE
 
@@ -40,6 +36,7 @@ extern SPI_HandleTypeDef hspi1;
 extern DAC_HandleTypeDef hdac1;
 
 void FOC_Enable() {
+  foc_reset();
   FOC_EN = true;
   prevTheta = 0.0f;
   while (true) {
@@ -53,9 +50,6 @@ void FOC_Enable() {
   vel = 0;
   pos = 0;
   I_ref = 0.0f;
-  csa_f = 0.0f;
-  csb_f = 0.0f;
-  csc_f = 0.0f;
 }
 
 void FOC_Disable() {
@@ -72,40 +66,24 @@ void FOC_Handler() {
     return;
   }
 
-  // DEBUG
-  HAL_GPIO_WritePin(TIMING_OUT_GPIO_Port, TIMING_OUT_Pin, GPIO_PIN_SET);
-
   // Read sensors
   float theta_raw = MT_READ(&hspi1);
+
+  // DEBUG
+  HAL_GPIO_WritePin(TIMING_OUT_GPIO_Port, TIMING_OUT_Pin, GPIO_PIN_SET);
   float32_t theta = mech2elec(theta_raw);
   float32_t sin_theta = arm_sin_f32(theta);
   float32_t cos_theta = arm_cos_f32(theta);
 
-  // Filter current sense
-  CSA_prev[0] = CSA[0];
-  CSA_prev[1] = CSA[1];
-  CSA_prev[2] = CSA[2];
-  if (abs(CSA[0] - CSA_prev[0]) < 1000) {
-    csa_f =
-        csa_f * csa_alpha + (1.0f - csa_alpha) * SCALE_CSA(CSA[0], CSA_STEADY);
-  }
-  if (abs(CSA[1] - CSA_prev[1]) < 1000) {
-    csb_f =
-        csb_f * csa_alpha + (1.0f - csa_alpha) * SCALE_CSA(CSA[1], CSB_STEADY);
-  }
-  if (abs(CSA[2] - CSA_prev[2]) < 1000) {
-    csc_f =
-        csc_f * csa_alpha + (1.0f - csa_alpha) * SCALE_CSA(CSA[2], CSC_STEADY);
-  }
-
   // Calculate measured currents
   float32_t di, qi;
-  abc_to_dq(csa_f, csb_f, csc_f, cos_theta, sin_theta, &di, &qi);
+  abc_to_dq(SCALE_CSA(CSA[0], CSA_STEADY), SCALE_CSA(CSA[1], CSB_STEADY),
+            SCALE_CSA(CSA[2], CSC_STEADY), cos_theta, sin_theta, &di, &qi);
 
   // Update current controller
   float32_t alpha, beta;
-  foc_pi_update(I_ref, di, qi, /*CSA[3] * VBUS_SCALE*/ 12.0f, &alpha, &beta,
-                sin_theta, cos_theta, vel);
+  foc_pi_update(I_ref, di, qi, CSA[3] * VBUS_SCALE, &alpha, &beta, sin_theta,
+                cos_theta, vel);
 
   // SPWM
   float ad, bd, cd;
@@ -137,5 +115,5 @@ void FOC_Handler() {
   /*HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_1, DAC_ALIGN_12B_R,
                    (uint32_t)(ad * 2048.0f));*/
   HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_1, DAC_ALIGN_12B_R,
-                   (uint32_t)(vel * 7.9f));
+                   (uint32_t)(vel * 3.2768));
 }

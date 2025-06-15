@@ -470,14 +470,14 @@ static void MX_HRTIM1_Init(void) {
     Error_Handler();
   }
   pTimeBaseCfg.Period = 0xFFF7;
-  pTimeBaseCfg.RepetitionCounter = 0x01;
+  pTimeBaseCfg.RepetitionCounter = 0x00;
   pTimeBaseCfg.PrescalerRatio = HRTIM_PRESCALERRATIO_MUL8;
   pTimeBaseCfg.Mode = HRTIM_MODE_CONTINUOUS;
   if (HAL_HRTIM_TimeBaseConfig(&hhrtim1, HRTIM_TIMERINDEX_MASTER,
                                &pTimeBaseCfg) != HAL_OK) {
     Error_Handler();
   }
-  pTimerCfg.InterruptRequests = HRTIM_MASTER_IT_MREP;
+  pTimerCfg.InterruptRequests = HRTIM_MASTER_IT_MCMP4;
   pTimerCfg.DMARequests = HRTIM_MASTER_DMA_NONE;
   pTimerCfg.DMASrcAddress = 0x0000;
   pTimerCfg.DMADstAddress = 0x0000;
@@ -502,7 +502,12 @@ static void MX_HRTIM1_Init(void) {
                                       &pCompareCfg) != HAL_OK) {
     Error_Handler();
   }
-  pTimeBaseCfg.RepetitionCounter = 0x00;
+  pCompareCfg.CompareValue = 0xFFF7 - 8200;
+  if (HAL_HRTIM_WaveformCompareConfig(&hhrtim1, HRTIM_TIMERINDEX_MASTER,
+                                      HRTIM_COMPAREUNIT_4,
+                                      &pCompareCfg) != HAL_OK) {
+    Error_Handler();
+  }
   if (HAL_HRTIM_TimeBaseConfig(&hhrtim1, HRTIM_TIMERINDEX_TIMER_A,
                                &pTimeBaseCfg) != HAL_OK) {
     Error_Handler();
@@ -682,7 +687,7 @@ static void MX_SPI1_Init(void) {
   hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
   hspi1.Init.CLKPhase = SPI_PHASE_2EDGE;
   hspi1.Init.NSS = SPI_NSS_SOFT;
-  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_32;
+  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_16;
   hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
   hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
   hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
