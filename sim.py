@@ -2,12 +2,12 @@ import matplotlib.pyplot as plt
 
 # --- Parameters ---
 Kt = 0.0036284605  # N-m/A
-V_batt = 12       # Volts
-P_max_system = 120 # Watts
+V_batt = 9.5       # Volts
+motor_max_angvel = 8000 * V_batt/12.0 * 0.10472 # Convert RPM to rad/s (0.10472 rad/s per RPM), scaled for battery voltage
+P_max_system = V_batt * 10 # Watts, max current of 10A
 I_max_motor = 15  # Amps
-motor_max_angvel = 8000 * 0.10472 # Convert RPM to rad/s (0.10472 rad/s per RPM)
 R_wheel = 2 * 0.0254 / 2 # meters (2 inches converted to meters divded by 2)
-GR = 3.25           # Gear Reduction (Let's start with 3:1 again, then you can test 100:1)
+GR = 2.5           # Gear Reduction (Let's start with 3:1 again, then you can test 100:1)
 d_target = 10     # meters
 m_robot = 0.75    # kg
 delta_t = 0.001  # Small time step (0.1 milliseconds for higher accuracy)
